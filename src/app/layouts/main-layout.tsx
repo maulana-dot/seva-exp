@@ -1,8 +1,13 @@
 import { Outlet } from 'react-router-dom'
 import { Suspense } from 'react'
 import { Navigation } from './navigation'
+import { useAuditTracker, useSessionTracker } from '@/features/audit/hooks/use-audit-tracker'
 
 export function MainLayout() {
+  // Enable automatic activity tracking
+  useAuditTracker()
+  useSessionTracker()
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />

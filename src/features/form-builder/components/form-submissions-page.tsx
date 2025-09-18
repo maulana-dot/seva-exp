@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { useForm } from '../hooks/use-forms'
 import { useFormSubmissionsByForm } from '../hooks/use-form-submissions'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
@@ -14,9 +15,9 @@ import {
   Eye,
   Calendar,
   User,
-  Download,
-  Search
+  Download
 } from 'lucide-react'
+import { formatDateTime } from '@/utils/date-format'
 import type { FormSubmission } from '@/entities/form-submission/form-submission.types'
 
 export default function FormSubmissionsPage() {
@@ -29,25 +30,60 @@ export default function FormSubmissionsPage() {
   const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByForm(formId || '')
 
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
 
   // Check permissions
   const canViewSubmissions = canManageAllForms || (form && form.createdBy === user?.firebaseUid)
 
-  const filteredSubmissions = submissions.filter(submission => {
-    if (!searchTerm) return true
+  // Define columns for the data table
+  const columns: DataTableColumn<FormSubmission>[] = [
+    {
+      id: 'submittedAt',
+      header: 'Submission Date',
+      accessorKey: 'submittedAt',
+      sortable: true,
+      searchable: false,
+      cell: (value) => (
+        <div className="flex items-center space-x-2">
+          <Calendar className="h-4 w-4 text-gray-400" />
+          <span className="text-sm">{formatDateTime(value)}</span>
+        </div>
+      ),
+      width: '180px'
+    },
+    {
+      id: 'submittedBy',
+      header: 'Submitted By',
+      accessorKey: 'submittedBy',
+      sortable: true,
+      searchable: true,
+      cell: (value) => (
+        <div className="flex items-center space-x-2">
+          <User className="h-4 w-4 text-gray-400" />
+          <span className="text-sm">{value || 'Anonymous'}</span>
+        </div>
+      ),
+      width: '150px'
+    }
+  ]
 
-    const searchLower = searchTerm.toLowerCase()
+  // Add form field columns (show first 4 fields as preview)
+  if (form?.fields) {
+    form.fields.slice(0, 4).forEach((field, index) => {
+      columns.push({
+        id: `field_${field.id}`,
+        header: field.label,
+        accessorFn: (row: FormSubmission) => row.submissionData[field.id],
+        sortable: true,
+        searchable: true,
+        cell: (value) => (
+          <div className="max-w-32 truncate" title={formatFieldValue(value)}>
+            <span className="text-sm">{formatFieldValue(value)}</span>
+          </div>
+        )
+      })
+    })
+  }
 
-    // Search in submission data values
-    const submissionValues = Object.values(submission.submissionData)
-      .filter(value => typeof value === 'string')
-      .join(' ')
-      .toLowerCase()
-
-    return submissionValues.includes(searchLower) ||
-           submission.submittedAt.toLocaleDateString().includes(searchLower)
-  })
 
   const formatFieldValue = (value: unknown): string => {
     if (value === null || value === undefined) return '-'
@@ -182,9 +218,18 @@ export default function FormSubmissionsPage() {
           </CardHeader>
         </Card>
 
-        {submissions.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
+        {/* Submissions Data Table */}
+        <DataTable
+          data={submissions}
+          columns={columns}
+          title={`Form Submissions (${submissions.length})`}
+          searchPlaceholder="Search submissions..."
+          pageSize={15}
+          onRowClick={setSelectedSubmission}
+          onExport={submissions.length > 0 ? exportSubmissions : undefined}
+          loading={submissionsLoading}
+          emptyMessage={
+            <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No submissions yet
@@ -198,76 +243,12 @@ export default function FormSubmissionsPage() {
               >
                 View Form
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Search and Filters */}
-            <div className="mb-6 flex items-center space-x-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search submissions..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
             </div>
-
-            {/* Submissions List */}
-            <div className="space-y-4">
-              {filteredSubmissions.map((submission) => (
-                <Card key={submission.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>{submission.submittedAt.toLocaleString()}</span>
-                        </div>
-                        {submission.submittedBy && (
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <User className="h-4 w-4" />
-                            <span>User ID: {submission.submittedBy}</span>
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedSubmission(submission)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-                    </div>
-
-                    {/* Preview of submission data */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {form.fields?.slice(0, 6).map((field) => {
-                        const value = submission.submissionData[field.id]
-                        if (!value) return null
-
-                        return (
-                          <div key={field.id} className="space-y-1">
-                            <div className="text-sm font-medium text-gray-700">
-                              {field.label}
-                            </div>
-                            <div className="text-sm text-gray-900 truncate">
-                              {formatFieldValue(value)}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
-        )}
+          }
+          enableSearch={true}
+          enablePagination={true}
+          enableSorting={true}
+        />
       </div>
 
       {/* Submission Details Modal */}

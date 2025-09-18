@@ -9,6 +9,7 @@ import { auth, db } from '@/libs/firebase'
 import { LoginCredentials, RegisterCredentials, PasswordResetRequest } from '@/entities/auth/auth.types'
 import { UserRole } from '@/entities/user/user.types'
 import { logger } from '@/utils/logger'
+import { AuditService } from '@/features/audit/services/audit.service'
 
 export class AuthService {
   static async login(credentials: LoginCredentials) {
@@ -16,9 +17,18 @@ export class AuthService {
       logger.info('Attempting user login', { email: credentials.email })
       const result = await signInWithEmailAndPassword(auth, credentials.email, credentials.password)
       logger.info('Login successful', { userId: result.user.uid })
+
+      // Log successful login
+      await AuditService.logUserLogin(result.user.uid, result.user.email || credentials.email, 'email_password')
+
       return result
     } catch (error) {
       logger.error('Login failed', { email: credentials.email, error })
+
+      // Log failed login attempt
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      await AuditService.logFailedLogin(credentials.email, errorMessage)
+
       throw error
     }
   }
@@ -53,6 +63,10 @@ export class AuthService {
       })
 
       logger.info('Registration successful', { userId: result.user.uid, role })
+
+      // Log successful registration
+      await AuditService.logAuthRegister(result.user.uid, result.user.email || credentials.email, 'email')
+
       return result
     } catch (error) {
       logger.error('Registration failed', { email: credentials.email, error })

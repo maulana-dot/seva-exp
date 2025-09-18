@@ -3,7 +3,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
-import { LogOut, Package, LayoutDashboard, Users, User, Settings, ChevronDown, Activity, FileText } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, User, Settings, ChevronDown, Activity, FileText, Database } from 'lucide-react'
 
 export function Navigation() {
   const { user, logout } = useAuth()
@@ -21,9 +21,9 @@ export function Navigation() {
           <div className="flex items-center space-x-8">
             <Link to="/" className="flex items-center space-x-2">
               <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-2 rounded-lg">
-                <Package className="h-5 w-5" />
+                <Database className="h-5 w-5" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Asset Manager</span>
+              <span className="text-xl font-bold text-gray-900">Seva</span>
             </Link>
 
             <div className="flex space-x-1">
@@ -37,18 +37,6 @@ export function Navigation() {
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span>Dashboard</span>
-              </Link>
-
-              <Link
-                to="/assets"
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive('/assets')
-                    ? 'text-blue-600 bg-blue-50 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Package className="h-4 w-4" />
-                <span>Assets</span>
               </Link>
 
               <Link

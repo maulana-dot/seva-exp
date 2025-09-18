@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **Digital Asset Management System** built with React 19, TypeScript, Firebase, and TailwindCSS. The application manages IT assets (laptops, desktops, monitors, etc.) with features for tracking, assignment, maintenance, and user management.
+This is **Seva**, a comprehensive Form Management Platform built with React 19, TypeScript, Firebase, and TailwindCSS. The application provides dynamic form creation, submission management, user administration, and comprehensive audit logging.
 
 ## Development Commands
 
@@ -71,7 +71,7 @@ src/
 The codebase uses branded types for IDs to prevent mixing different entity IDs:
 ```typescript
 export type UserId = string & { readonly brand: unique symbol }
-export type AssetId = string & { readonly brand: unique symbol }
+export type FormId = string & { readonly brand: unique symbol }
 ```
 
 #### Firebase Integration
@@ -133,15 +133,17 @@ The app connects to Firebase project "digital-asset-mapping":
 - Protected routes automatically redirect to login if unauthenticated
 - Auth state managed through Firebase onAuthStateChanged listener
 
-### Asset Management
-- Assets have comprehensive metadata including photos, ownership, maintenance
-- Status workflow: Available → In Use → Maintenance → Available (or Retired)
-- Support for bulk operations and CSV export/import
+### Form Management
+- Dynamic form creation with drag-and-drop interface
+- Form submission collection and management
+- Support for various field types and validation rules
+- Form publishing and sharing capabilities
 
 ### Audit Trail
-- All user actions logged through `AuditService`
-- Includes login/logout, asset operations, user management
-- Stored in Firestore with proper typing
+- Comprehensive activity logging through enhanced `AuditService`
+- Tracks authentication, form operations, user management, navigation, and security events
+- Enhanced metadata including device type, session tracking, and user behavior analytics
+- Stored in Firestore with proper typing and advanced filtering capabilities
 
 ## Development Server
 

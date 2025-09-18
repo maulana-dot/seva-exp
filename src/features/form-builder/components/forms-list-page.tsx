@@ -163,6 +163,10 @@ export default function FormsListPage() {
                 </Button>
               </DropdownTrigger>
               <DropdownContent>
+                <DropdownItem onClick={() => navigate(`/forms/${form.id}/detail`)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownItem>
                 <DropdownItem onClick={() => navigate(`/form-builder/${form.id}`)}>
                   <Eye className="mr-2 h-4 w-4" />
                   View
@@ -264,6 +268,10 @@ export default function FormsListPage() {
                 </Button>
               </DropdownTrigger>
               <DropdownContent>
+                <DropdownItem onClick={() => navigate(`/forms/${form.id}/detail`)}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Details
+                </DropdownItem>
                 <DropdownItem onClick={() => navigate(`/form-builder/${form.id}`)}>
                   <Eye className="mr-2 h-4 w-4" />
                   View

@@ -9,13 +9,12 @@ import { lazy } from 'react'
 const LoginPage = lazy(() => import('@/features/authentication/components/login-page'))
 const RegisterPage = lazy(() => import('@/features/authentication/components/register-page'))
 const DashboardPage = lazy(() => import('@/features/dashboard/components/dashboard-page'))
-const AssetsPage = lazy(() => import('@/features/assets/components/assets-page'))
-const AssetDetailsPage = lazy(() => import('@/features/assets/components/asset-detail-page'))
 const UserManagementPage = lazy(() => import('@/features/user-management/components/user-management-page'))
 const AuditLogsPage = lazy(() => import('@/features/audit/components/audit-logs-page'))
 const FormBuilderPage = lazy(() => import('@/features/form-builder/components/form-builder-page'))
 const FormsListPage = lazy(() => import('@/features/form-builder/components/forms-list-page'))
 const FormViewPage = lazy(() => import('@/features/form-builder/components/form-view-page'))
+const FormDetailPage = lazy(() => import('@/features/form-builder/components/form-detail-page'))
 const FormSubmissionsPage = lazy(() => import('@/features/form-builder/components/form-submissions-page'))
 const AdminSetupPage = lazy(() => import('@/features/admin-setup/components/admin-setup-page'))
 
@@ -29,22 +28,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <DashboardPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'assets',
-        element: (
-          <ProtectedRoute>
-            <AssetsPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'assets/:id',
-        element: (
-          <ProtectedRoute>
-            <AssetDetailsPage />
           </ProtectedRoute>
         ),
       },
@@ -77,6 +60,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FormViewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'forms/:formId/detail',
+        element: (
+          <ProtectedRoute>
+            <FormDetailPage />
           </ProtectedRoute>
         ),
       },
