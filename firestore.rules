@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+
+    function isManager() {
+      return getUserRole() == 'manager';
+    }
+
+    function isUser() {
+      return getUserRole() == 'user';
+    }
+
+    function canReadAllAssets() {
+      return isAdmin() || isManager();
+    }
+
+    function canUpdateAllAssets() {
+      return isAdmin() || isManager();
+    }
+
+    function canDeleteAllAssets() {
+      return isAdmin();
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Users can read their own document
+      allow read: if isAuthenticated() && isOwner(userId);
+
+      // Admins can read all users
+      allow read: if isAuthenticated() && isAdmin();
+
+      // Users can create their own document during registration
+      allow create: if isAuthenticated() && isOwner(userId);
+
+      // Users can update their own profile (except role)
+      allow update: if isAuthenticated() && isOwner(userId)
+        && !('role' in request.resource.data.diff(resource.data).affectedKeys());
+
+      // Admins can update user roles and profiles
+      allow update: if isAuthenticated() && isAdmin();
+
+      // Only admins can delete users
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // Assets collection rules
+    match /assets/{assetId} {
+      // Read permissions:
+      // - Admins and managers can read all assets
+      // - Regular users can only read assets they created
+      allow read: if isAuthenticated() && (
+        canReadAllAssets() ||
+        isOwner(resource.data.createdBy)
+      );
+
+      // Create permissions:
+      // - All authenticated users can create assets
+      // - Must set createdBy to their own UID
+      allow create: if isAuthenticated() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.keys().hasAll([
+          'assetTag', 'status', 'manufacturer', 'model',
+          'assetType', 'color', 'serialNumber', 'purchaseDate',
+          'purchasePrice', 'orderNumber', 'createdAt', 'updatedAt'
+        ]);
+
+      // Update permissions:
+      // - Admins and managers can update all assets
+      // - Regular users can only update assets they created
+      // - Cannot change createdBy field
+      allow update: if isAuthenticated() && (
+        canUpdateAllAssets() ||
+        isOwner(resource.data.createdBy)
+      ) && !('createdBy' in request.resource.data.diff(resource.data).affectedKeys());
+
+      // Delete permissions:
+      // - Only admins can delete all assets
+      // - Regular users can delete their own assets
+      allow delete: if isAuthenticated() && (
+        canDeleteAllAssets() ||
+        isOwner(resource.data.createdBy)
+      );
+    }
+
+    // Audit logs (if implemented later)
+    match /audit_logs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAuthenticated() && isAdmin();
+
+      // System can create audit logs
+      allow create: if isAuthenticated();
+
+      // No updates or deletes allowed on audit logs
+      allow update, delete: if false;
+    }
+
+    // Deny all other reads/writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

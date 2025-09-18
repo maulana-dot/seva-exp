@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Device photos - users can upload and read their own photos
+    match /device-photos/{filename} {
+      // Allow authenticated users to upload device photos
+      allow write: if request.auth != null;
+
+      // Allow authenticated users to read device photos
+      allow read: if request.auth != null;
+
+      // File size limit: 10MB
+      allow write: if request.resource.size < 10 * 1024 * 1024;
+
+      // Only allow image files
+      allow write: if request.resource.contentType.matches('image/.*');
+    }
+
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
