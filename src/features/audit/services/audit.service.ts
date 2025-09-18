@@ -2,6 +2,8 @@ import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, wh
 import { db } from '@/libs/firebase'
 import { logger } from '@/utils/logger'
 import type { AuditLog, CreateAuditLogInput } from '@/entities/audit/audit.types'
+import type { AssetId } from '@/entities/asset/asset.types'
+import type { UserId } from '@/entities/user/user.types'
 
 const AUDIT_LOGS_COLLECTION = 'audit_logs'
 
@@ -92,10 +94,10 @@ export class AuditService {
   static async logAssetCreated(userId: string, userEmail: string, assetId: string, assetTag: string) {
     await this.createLog({
       action: 'asset.created',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'asset',
-      resourceId: assetId,
+      resourceId: assetId as AssetId,
       details: { assetTag },
     })
   }
@@ -103,10 +105,10 @@ export class AuditService {
   static async logAssetUpdated(userId: string, userEmail: string, assetId: string, assetTag: string, changes: Record<string, unknown>) {
     await this.createLog({
       action: 'asset.updated',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'asset',
-      resourceId: assetId,
+      resourceId: assetId as AssetId,
       details: { assetTag, changes },
     })
   }
@@ -114,10 +116,10 @@ export class AuditService {
   static async logAssetDeleted(userId: string, userEmail: string, assetId: string, assetTag: string) {
     await this.createLog({
       action: 'asset.deleted',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'asset',
-      resourceId: assetId,
+      resourceId: assetId as AssetId,
       details: { assetTag },
     })
   }
@@ -125,10 +127,10 @@ export class AuditService {
   static async logAssetStatusChanged(userId: string, userEmail: string, assetId: string, assetTag: string, oldStatus: string, newStatus: string) {
     await this.createLog({
       action: 'asset.status_changed',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'asset',
-      resourceId: assetId,
+      resourceId: assetId as AssetId,
       details: { assetTag, oldStatus, newStatus },
     })
   }
@@ -136,10 +138,10 @@ export class AuditService {
   static async logAssetOwnerChanged(userId: string, userEmail: string, assetId: string, assetTag: string, oldOwner?: string, newOwner?: string) {
     await this.createLog({
       action: 'asset.owner_changed',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'asset',
-      resourceId: assetId,
+      resourceId: assetId as AssetId,
       details: { assetTag, oldOwner, newOwner },
     })
   }
@@ -147,7 +149,7 @@ export class AuditService {
   static async logUserLogin(userId: string, userEmail: string) {
     await this.createLog({
       action: 'auth.login',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'auth',
     })
@@ -156,7 +158,7 @@ export class AuditService {
   static async logUserLogout(userId: string, userEmail: string) {
     await this.createLog({
       action: 'auth.logout',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'auth',
     })
@@ -165,10 +167,10 @@ export class AuditService {
   static async logUserUpdated(userId: string, userEmail: string, targetUserId: string, targetUserEmail: string, changes: Record<string, unknown>) {
     await this.createLog({
       action: 'user.updated',
-      userId,
+      userId: userId as UserId,
       userEmail,
       resourceType: 'user',
-      resourceId: targetUserId,
+      resourceId: targetUserId as UserId,
       details: { targetUserEmail, changes },
     })
   }

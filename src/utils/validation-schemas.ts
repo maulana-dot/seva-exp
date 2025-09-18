@@ -61,9 +61,7 @@ export const notesSchema = z
   .string()
   .max(1000, 'Notes must not exceed 1000 characters')
 
-export const assetStatusSchema = z.enum(['Available', 'In Use', 'Maintenance', 'Reserved', 'Retired'], {
-  errorMap: () => ({ message: 'Invalid asset status' })
-})
+export const assetStatusSchema = z.enum(['Available', 'In Use', 'Maintenance', 'Reserved', 'Retired'])
 
 export const assetTypeSchema = z
   .string()
@@ -75,9 +73,7 @@ export const colorSchema = z
   .min(1, 'Color is required')
   .max(30, 'Color must not exceed 30 characters')
 
-export const userRoleSchema = z.enum(['admin', 'manager', 'user'], {
-  errorMap: () => ({ message: 'Invalid user role' })
-})
+export const userRoleSchema = z.enum(['admin', 'manager', 'user'])
 
 // File validation
 export const imageFileSchema = z
@@ -221,7 +217,7 @@ export function validateAndTransform<T>(
     return schema.parse(data)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0]
+      const firstError = error.issues[0]
       throw new Error(`${context ? context + ': ' : ''}${firstError.message}`)
     }
     throw error

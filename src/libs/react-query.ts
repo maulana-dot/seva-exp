@@ -22,10 +22,6 @@ export const queryClient = new QueryClient({
         return failureCount < 3
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      onError: (error: any) => {
-        logger.error('Query error', { error: error.message })
-        handleError(error, 'Query')
-      },
     },
     mutations: {
       retry: (failureCount, error: any) => {

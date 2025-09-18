@@ -12,6 +12,9 @@ const DashboardPage = lazy(() => import('@/features/dashboard/components/dashboa
 const AssetsPage = lazy(() => import('@/features/assets/components/assets-page'))
 const AssetDetailsPage = lazy(() => import('@/features/assets/components/asset-detail-page'))
 const UserManagementPage = lazy(() => import('@/features/user-management/components/user-management-page'))
+const AuditLogsPage = lazy(() => import('@/features/audit/components/audit-logs-page'))
+const FormBuilderPage = lazy(() => import('@/features/form-builder/components/form-builder-page'))
+const FormsListPage = lazy(() => import('@/features/form-builder/components/forms-list-page'))
 const AdminSetupPage = lazy(() => import('@/features/admin-setup/components/admin-setup-page'))
 
 export const router = createBrowserRouter([
@@ -48,6 +51,46 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <UserManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'audit-logs',
+        element: (
+          <ProtectedRoute requiredRole="admin">
+            <AuditLogsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'forms',
+        element: (
+          <ProtectedRoute>
+            <FormsListPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'form-builder/new',
+        element: (
+          <ProtectedRoute>
+            <FormBuilderPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'form-builder/:formId',
+        element: (
+          <ProtectedRoute>
+            <FormBuilderPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'form-builder/:formId/edit',
+        element: (
+          <ProtectedRoute>
+            <FormBuilderPage />
           </ProtectedRoute>
         ),
       },

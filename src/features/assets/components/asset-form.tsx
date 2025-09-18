@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, parseCurrency } from '@/utils/number-format'
+import { formatCurrency } from '@/utils/number-format'
 import { formatDateForInput } from '@/utils/date-format'
 import type { Asset, AssetStatus, AssetType } from '@/entities/asset/asset.types'
 
@@ -43,7 +43,6 @@ export function AssetForm({ asset, onSubmit, isSubmitting = false, submitLabel =
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm<AssetFormData>({
     resolver: zodResolver(assetFormSchema),
     defaultValues: asset
@@ -71,9 +70,6 @@ export function AssetForm({ asset, onSubmit, isSubmitting = false, submitLabel =
   const handleFormSubmit = (data: AssetFormData) => {
     const processedData = {
       ...data,
-      purchasePrice: parseCurrency(data.purchasePrice),
-      purchaseDate: new Date(data.purchaseDate),
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       devicePhoto: data.devicePhoto?.[0] || undefined,
     }
     onSubmit(processedData)
@@ -98,7 +94,7 @@ export function AssetForm({ asset, onSubmit, isSubmitting = false, submitLabel =
                 disabled={isSubmitting}
               />
               {errors.devicePhoto && (
-                <p className="text-sm text-red-600 mt-1">{errors.devicePhoto.message}</p>
+                <p className="text-sm text-red-600 mt-1">{errors.devicePhoto?.message}</p>
               )}
             </div>
 
@@ -112,7 +108,7 @@ export function AssetForm({ asset, onSubmit, isSubmitting = false, submitLabel =
                 disabled={isSubmitting}
               />
               {errors.assetTag && (
-                <p className="text-sm text-red-600 mt-1">{errors.assetTag.message}</p>
+                <p className="text-sm text-red-600 mt-1">{errors.assetTag?.message}</p>
               )}
             </div>
 

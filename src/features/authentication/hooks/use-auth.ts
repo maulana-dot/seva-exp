@@ -22,7 +22,10 @@ export function useLogin() {
       // Log successful login
       await AuditService.logUserLogin(result.user.uid, result.user.email || 'unknown')
 
-      navigate('/')
+      // Small delay to ensure auth state is updated before navigation
+      setTimeout(() => {
+        navigate('/')
+      }, 100)
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Login failed')
@@ -38,7 +41,10 @@ export function useRegister() {
       AuthService.register(credentials, role),
     onSuccess: () => {
       toast.success('Registration successful')
-      navigate('/')
+      // Small delay to ensure auth state is updated before navigation
+      setTimeout(() => {
+        navigate('/')
+      }, 100)
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Registration failed')

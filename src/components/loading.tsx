@@ -1,4 +1,4 @@
-import { cn } from '@/utils/utils'
+import { cn } from '@/lib/utils'
 import { Loader2, Package, Users, Shield } from 'lucide-react'
 
 interface LoadingProps {

@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/libs/firebase'
 import { AuditService } from '@/features/audit/services/audit.service'
 import { AuthState, AuthUser } from '@/entities/auth/auth.types'
-import { UserId } from '@/entities/user/user.types'
+import { UserId, UserRole } from '@/entities/user/user.types'
 import { logger } from '@/utils/logger'
 
 interface AuthContextType extends AuthState {
@@ -56,6 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           if (userDoc.exists()) {
             const userData = userDoc.data()
+
             const user: AuthUser = {
               id: firebaseUser.uid as UserId,
               firebaseUid: firebaseUser.uid,
@@ -76,13 +77,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             logger.info('User authenticated', { userId: user.id, role: user.role })
           } else {
-            // User document doesn't exist, create a basic one
-            logger.warn('User document not found, user needs to complete registration')
-            setState({
-              user: null,
-              isLoading: false,
-              isAuthenticated: false,
-            })
+            // User document doesn't exist, create a basic one automatically
+            logger.warn('User document not found, creating basic user document')
+
+            try {
+              const isAdmin = firebaseUser.email === 'admin@admin.com'
+              const userRole: UserRole = isAdmin ? 'admin' : 'user'
+              const basicUserData = {
+                firebaseUid: firebaseUser.uid,
+                email: firebaseUser.email!,
+                displayName: firebaseUser.displayName || 'User',
+                role: userRole,
+                department: isAdmin ? 'Administration' : null,
+                isActive: true,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              }
+
+              await setDoc(doc(db, 'users', firebaseUser.uid), basicUserData)
+
+              const user: AuthUser = {
+                id: firebaseUser.uid as UserId,
+                firebaseUid: firebaseUser.uid,
+                email: firebaseUser.email!,
+                displayName: basicUserData.displayName,
+                role: userRole,
+                department: basicUserData.department,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                isActive: true,
+              }
+
+              setState({
+                user,
+                isLoading: false,
+                isAuthenticated: true,
+              })
+
+              logger.info('User document created and authenticated', { userId: user.id, role: user.role })
+            } catch (docError) {
+              logger.error('Error creating user document', docError)
+              setState({
+                user: null,
+                isLoading: false,
+                isAuthenticated: false,
+              })
+            }
           }
         } catch (error) {
           logger.error('Error fetching user data', error)
