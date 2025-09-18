@@ -154,7 +154,6 @@ export function useSessionTracker() {
     window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
-      clearTimeout(activityTimer)
       clearTimeout(idleTimer)
       events.forEach(event => {
         document.removeEventListener(event, trackUserActivity, true)

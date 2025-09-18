@@ -44,7 +44,7 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void
   onExport?: () => void
   loading?: boolean
-  emptyMessage?: string
+  emptyMessage?: React.ReactNode
   enableSearch?: boolean
   enablePagination?: boolean
   enableSorting?: boolean
@@ -272,7 +272,7 @@ export function DataTable<T>({
       <CardContent>
         {paginatedData.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>{emptyMessage}</p>
+            {typeof emptyMessage === 'string' ? <p>{emptyMessage}</p> : emptyMessage}
           </div>
         ) : (
           <>

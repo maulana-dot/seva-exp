@@ -4,9 +4,12 @@ import type { AuditLog } from '@/entities/audit/audit.types'
 
 interface UseAuditLogsOptions {
   userId?: string
-  resourceType?: 'asset' | 'user' | 'auth'
+  resourceType?: 'form' | 'user' | 'auth' | 'navigation' | 'system' | 'security'
   resourceId?: string
   limitCount?: number
+  startDate?: Date
+  endDate?: Date
+  action?: string
 }
 
 export function useAuditLogs(options?: UseAuditLogsOptions) {
@@ -25,8 +28,8 @@ export function useUserAuditLogs(userId: string, limit = 50) {
   return useAuditLogs({ userId, limitCount: limit })
 }
 
-export function useAssetAuditLogs(assetId: string, limit = 50) {
-  return useAuditLogs({ resourceType: 'asset', resourceId: assetId, limitCount: limit })
+export function useFormAuditLogs(formId: string, limit = 50) {
+  return useAuditLogs({ resourceType: 'form', resourceId: formId, limitCount: limit })
 }
 
 export function useAuthAuditLogs(limit = 50) {
