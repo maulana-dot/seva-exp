@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,7 +22,6 @@ import {
   Users,
   Settings,
   ExternalLink,
-  Filter,
   Grid,
   List,
   SortAsc,
@@ -158,7 +157,7 @@ export default function FormsListPage() {
               {form.isActive ? 'Active' : 'Draft'}
             </Badge>
             <DropdownMenu>
-              <DropdownTrigger asChild>
+              <DropdownTrigger>
                 <Button variant="ghost" size="sm">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -259,7 +258,7 @@ export default function FormsListPage() {
             </div>
 
             <DropdownMenu>
-              <DropdownTrigger asChild>
+              <DropdownTrigger>
                 <Button variant="ghost" size="sm">
                   <MoreVertical className="h-4 w-4" />
                 </Button>

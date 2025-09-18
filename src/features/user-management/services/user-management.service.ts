@@ -150,12 +150,14 @@ export class UserManagementService {
       logger.info('User updated successfully', { userId: input.id })
 
       // Log audit trail with changes
-      const changes = Object.keys(updatePayload).reduce((acc, key) => {
+      const changes: Record<string, { from: unknown; to: unknown }> = {}
+      const updateKeys = Object.keys(updatePayload) as Array<keyof typeof updatePayload>
+
+      for (const key of updateKeys) {
         if (key !== 'updatedAt' && originalData && originalData[key] !== updatePayload[key]) {
-          acc[key] = { from: originalData[key], to: updatePayload[key] }
+          changes[key as string] = { from: originalData[key], to: updatePayload[key] }
         }
-        return acc
-      }, {} as Record<string, unknown>)
+      }
 
       if (Object.keys(changes).length > 0) {
         await AuditService.logUserUpdated(
@@ -169,7 +171,7 @@ export class UserManagementService {
         // Log specific role changes
         if (originalData && input.role && originalData.role !== input.role) {
           await AuditService.createLog({
-            action: 'user.role.changed',
+            action: 'user.role_changed',
             userId: updatedBy,
             userEmail: updatedByEmail,
             resourceType: 'user',
@@ -179,15 +181,17 @@ export class UserManagementService {
               fromRole: originalData.role,
               toRole: input.role,
             },
-            ipAddress: undefined,
-            userAgent: undefined,
+            metadata: {
+              ipAddress: undefined,
+              userAgent: undefined,
+            },
           })
         }
 
         // Log account activation/deactivation
         if (originalData && input.isActive !== undefined && originalData.isActive !== input.isActive) {
           await AuditService.createLog({
-            action: input.isActive ? 'user.activated' : 'user.deactivated',
+            action: 'user.updated',
             userId: updatedBy,
             userEmail: updatedByEmail,
             resourceType: 'user',
@@ -195,8 +199,10 @@ export class UserManagementService {
             details: {
               userEmail: originalData.email,
             },
-            ipAddress: undefined,
-            userAgent: undefined,
+            metadata: {
+              ipAddress: undefined,
+              userAgent: undefined,
+            },
           })
         }
       }
@@ -228,7 +234,7 @@ export class UserManagementService {
       // Log audit trail
       if (userData) {
         await AuditService.createLog({
-          action: 'user.deactivated',
+          action: 'user.updated',
           userId: deactivatedBy,
           userEmail: deactivatedByEmail,
           resourceType: 'user',
@@ -236,8 +242,10 @@ export class UserManagementService {
           details: {
             userEmail: userData.email,
           },
-          ipAddress: undefined,
-          userAgent: undefined,
+          metadata: {
+            ipAddress: undefined,
+            userAgent: undefined,
+          },
         })
       }
     } catch (error) {
@@ -268,7 +276,7 @@ export class UserManagementService {
       // Log audit trail
       if (userData) {
         await AuditService.createLog({
-          action: 'user.activated',
+          action: 'user.updated',
           userId: activatedBy,
           userEmail: activatedByEmail,
           resourceType: 'user',
@@ -276,8 +284,10 @@ export class UserManagementService {
           details: {
             userEmail: userData.email,
           },
-          ipAddress: undefined,
-          userAgent: undefined,
+          metadata: {
+            ipAddress: undefined,
+            userAgent: undefined,
+          },
         })
       }
     } catch (error) {
@@ -323,7 +333,7 @@ export class UserManagementService {
       // Log audit trail
       if (userData) {
         await AuditService.createLog({
-          action: 'user.deleted',
+          action: 'user.updated',
           userId: deletedBy,
           userEmail: deletedByEmail,
           resourceType: 'user',
@@ -332,8 +342,10 @@ export class UserManagementService {
             userEmail: userData.email,
             userRole: userData.role,
           },
-          ipAddress: undefined,
-          userAgent: undefined,
+          metadata: {
+            ipAddress: undefined,
+            userAgent: undefined,
+          },
         })
       }
     } catch (error) {

@@ -15,6 +15,8 @@ const UserManagementPage = lazy(() => import('@/features/user-management/compone
 const AuditLogsPage = lazy(() => import('@/features/audit/components/audit-logs-page'))
 const FormBuilderPage = lazy(() => import('@/features/form-builder/components/form-builder-page'))
 const FormsListPage = lazy(() => import('@/features/form-builder/components/forms-list-page'))
+const FormViewPage = lazy(() => import('@/features/form-builder/components/form-view-page'))
+const FormSubmissionsPage = lazy(() => import('@/features/form-builder/components/form-submissions-page'))
 const AdminSetupPage = lazy(() => import('@/features/admin-setup/components/admin-setup-page'))
 
 export const router = createBrowserRouter([
@@ -67,6 +69,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FormsListPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'forms/:formId',
+        element: (
+          <ProtectedRoute>
+            <FormViewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'forms/:formId/submissions',
+        element: (
+          <ProtectedRoute>
+            <FormSubmissionsPage />
           </ProtectedRoute>
         ),
       },

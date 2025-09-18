@@ -169,7 +169,8 @@ export function parseCSV(csvContent: string): CSVAssetRow[] {
       row[header] = values[index]
     })
 
-    rows.push(row as CSVAssetRow)
+    // Convert to CSVAssetRow - we've validated headers match
+    rows.push(row as unknown as CSVAssetRow)
   }
 
   return rows

@@ -94,7 +94,9 @@ export function AssetForm({ asset, onSubmit, isSubmitting = false, submitLabel =
                 disabled={isSubmitting}
               />
               {errors.devicePhoto && (
-                <p className="text-sm text-red-600 mt-1">{errors.devicePhoto?.message}</p>
+                <p className="text-sm text-red-600 mt-1">
+                  {String(errors.devicePhoto?.message || 'Invalid device photo')}
+                </p>
               )}
             </div>
 

@@ -4,10 +4,8 @@ import { FormService } from '../services/form.service'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
 import type {
-  CustomForm,
   CreateFormInput,
   UpdateFormInput,
-  FormSubmission
 } from '@/entities/form/form.types'
 
 // Query Keys
@@ -83,7 +81,7 @@ export function useCreateForm() {
 
   return useMutation({
     mutationFn: (input: CreateFormInput) => FormService.createForm(input, user?.id!),
-    onSuccess: (formId) => {
+    onSuccess: () => {
       toast.success('Form created successfully')
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.forms })

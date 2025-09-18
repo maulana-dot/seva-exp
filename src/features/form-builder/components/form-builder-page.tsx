@@ -30,7 +30,7 @@ import type { CustomForm, FormField, FormFieldType } from '@/entities/form/form.
 export default function FormBuilderPage() {
   const { formId } = useParams<{ formId: string }>()
   const navigate = useNavigate()
-  const { canManageAllForms } = usePermissions()
+  const { } = usePermissions()
 
   const isEditing = formId && formId !== 'new'
   const { data: existingForm } = useForm(formId || '')
@@ -59,7 +59,7 @@ export default function FormBuilderPage() {
   const [showFieldTypeSelector, setShowFieldTypeSelector] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [draggedField, setDraggedField] = useState<string | null>(null)
+  const [draggedField] = useState<string | null>(null)
 
 
   const addField = (type: FormFieldType) => {

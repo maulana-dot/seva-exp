@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/authentication/hooks/use-auth'

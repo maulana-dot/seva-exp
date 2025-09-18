@@ -9,11 +9,9 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp,
-  Timestamp
+  serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/libs/firebase'
-import { logger } from '@/utils/logger'
 import type {
   CustomForm,
   CreateFormInput,
@@ -28,7 +26,7 @@ const SUBMISSIONS_COLLECTION = 'form_submissions'
 export class FormService {
   static async createForm(input: CreateFormInput, createdBy: UserId): Promise<string> {
     try {
-      logger.info('Creating new form', { title: input.title, createdBy })
+      console.log('Creating new form', { title: input.title, createdBy })
 
       const formData = {
         title: input.title,
@@ -47,17 +45,17 @@ export class FormService {
 
       const docRef = await addDoc(collection(db, FORMS_COLLECTION), formData)
 
-      logger.info('Form created successfully', { formId: docRef.id, createdBy })
+      console.log('Form created successfully', { formId: docRef.id, createdBy })
       return docRef.id
     } catch (error) {
-      logger.error('Failed to create form', { input, createdBy, error })
+      console.error('Failed to create form', { input, createdBy, error })
       throw error
     }
   }
 
   static async updateForm(input: UpdateFormInput, userId: UserId): Promise<void> {
     try {
-      logger.info('Updating form', { formId: input.id, userId })
+      console.log('Updating form', { formId: input.id, userId })
 
       const formRef = doc(db, FORMS_COLLECTION, input.id)
       const formDoc = await getDoc(formRef)
@@ -86,16 +84,16 @@ export class FormService {
 
       await updateDoc(formRef, updateData)
 
-      logger.info('Form updated successfully', { formId: input.id, userId })
+      console.log('Form updated successfully', { formId: input.id, userId })
     } catch (error) {
-      logger.error('Failed to update form', { input, userId, error })
+      console.error('Failed to update form', { input, userId, error })
       throw error
     }
   }
 
   static async deleteForm(formId: string, userId: UserId): Promise<void> {
     try {
-      logger.info('Deleting form', { formId, userId })
+      console.log('Deleting form', { formId, userId })
 
       const formRef = doc(db, FORMS_COLLECTION, formId)
       const formDoc = await getDoc(formRef)
@@ -113,16 +111,16 @@ export class FormService {
 
       await deleteDoc(formRef)
 
-      logger.info('Form deleted successfully', { formId, userId })
+      console.log('Form deleted successfully', { formId, userId })
     } catch (error) {
-      logger.error('Failed to delete form', { formId, userId, error })
+      console.error('Failed to delete form', { formId, userId, error })
       throw error
     }
   }
 
   static async getForm(formId: string): Promise<CustomForm | null> {
     try {
-      logger.info('Fetching form', { formId })
+      console.log('Fetching form', { formId })
 
       const formDoc = await getDoc(doc(db, FORMS_COLLECTION, formId))
 
@@ -138,14 +136,14 @@ export class FormService {
         updatedAt: data.updatedAt?.toDate() || new Date(),
       } as CustomForm
     } catch (error) {
-      logger.error('Failed to fetch form', { formId, error })
+      console.error('Failed to fetch form', { formId, error })
       throw error
     }
   }
 
   static async getUserForms(userId: UserId): Promise<CustomForm[]> {
     try {
-      logger.info('Fetching user forms', { userId })
+      console.log('Fetching user forms', { userId })
 
       const q = query(
         collection(db, FORMS_COLLECTION),
@@ -166,17 +164,17 @@ export class FormService {
         } as CustomForm)
       })
 
-      logger.info('User forms fetched successfully', { userId, count: forms.length })
+      console.log('User forms fetched successfully', { userId, count: forms.length })
       return forms
     } catch (error) {
-      logger.error('Failed to fetch user forms', { userId, error })
+      console.error('Failed to fetch user forms', { userId, error })
       throw error
     }
   }
 
   static async getAllForms(): Promise<CustomForm[]> {
     try {
-      logger.info('Fetching all forms')
+      console.log('Fetching all forms')
 
       const q = query(
         collection(db, FORMS_COLLECTION),
@@ -196,17 +194,17 @@ export class FormService {
         } as CustomForm)
       })
 
-      logger.info('All forms fetched successfully', { count: forms.length })
+      console.log('All forms fetched successfully', { count: forms.length })
       return forms
     } catch (error) {
-      logger.error('Failed to fetch all forms', { error })
+      console.error('Failed to fetch all forms', { error })
       throw error
     }
   }
 
   static async submitForm(formId: string, data: Record<string, unknown>, submittedBy?: UserId, submitterEmail?: string): Promise<string> {
     try {
-      logger.info('Submitting form', { formId, submittedBy })
+      console.log('Submitting form', { formId, submittedBy })
 
       const submissionData = {
         formId,
@@ -219,17 +217,17 @@ export class FormService {
 
       const docRef = await addDoc(collection(db, SUBMISSIONS_COLLECTION), submissionData)
 
-      logger.info('Form submitted successfully', { formId, submissionId: docRef.id, submittedBy })
+      console.log('Form submitted successfully', { formId, submissionId: docRef.id, submittedBy })
       return docRef.id
     } catch (error) {
-      logger.error('Failed to submit form', { formId, submittedBy, error })
+      console.error('Failed to submit form', { formId, submittedBy, error })
       throw error
     }
   }
 
   static async getFormSubmissions(formId: string): Promise<FormSubmission[]> {
     try {
-      logger.info('Fetching form submissions', { formId })
+      console.log('Fetching form submissions', { formId })
 
       const q = query(
         collection(db, SUBMISSIONS_COLLECTION),
@@ -249,17 +247,17 @@ export class FormService {
         } as FormSubmission)
       })
 
-      logger.info('Form submissions fetched successfully', { formId, count: submissions.length })
+      console.log('Form submissions fetched successfully', { formId, count: submissions.length })
       return submissions
     } catch (error) {
-      logger.error('Failed to fetch form submissions', { formId, error })
+      console.error('Failed to fetch form submissions', { formId, error })
       throw error
     }
   }
 
   static async duplicateForm(formId: string, userId: UserId): Promise<string> {
     try {
-      logger.info('Duplicating form', { formId, userId })
+      console.log('Duplicating form', { formId, userId })
 
       const originalForm = await this.getForm(formId)
       if (!originalForm) {
@@ -285,10 +283,10 @@ export class FormService {
 
       const newFormId = await this.createForm(duplicateInput, userId)
 
-      logger.info('Form duplicated successfully', { originalFormId: formId, newFormId, userId })
+      console.log('Form duplicated successfully', { originalFormId: formId, newFormId, userId })
       return newFormId
     } catch (error) {
-      logger.error('Failed to duplicate form', { formId, userId, error })
+      console.error('Failed to duplicate form', { formId, userId, error })
       throw error
     }
   }

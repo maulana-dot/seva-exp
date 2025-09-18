@@ -102,7 +102,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 email: firebaseUser.email!,
                 displayName: basicUserData.displayName,
                 role: userRole,
-                department: basicUserData.department,
+                department: basicUserData.department || undefined,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 isActive: true,

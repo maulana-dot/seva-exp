@@ -12,6 +12,7 @@ import {
   limit,
   serverTimestamp,
   QueryConstraint,
+  FieldValue,
 } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '@/libs/firebase'
@@ -89,7 +90,7 @@ export class AssetService {
         devicePhotoUrl = await this.uploadDevicePhoto(devicePhoto, input.assetTag || 'unknown')
       } else if (devicePhoto === null) {
         // If explicitly set to null, remove photo
-        devicePhotoUrl = null
+        devicePhotoUrl = undefined
       }
       // If devicePhoto is undefined, don't update the photo field
 
@@ -106,16 +107,18 @@ export class AssetService {
       const originalAsset = await getDoc(assetRef)
       const originalData = originalAsset.data()
 
-      await updateDoc(assetRef, updatePayload)
+      await updateDoc(assetRef, updatePayload as { [x: string]: FieldValue | Partial<unknown> | undefined })
       logger.info('Asset updated successfully', { assetId: input.id })
 
       // Log audit trail with changes
-      const changes = Object.keys(updatePayload).reduce((acc, key) => {
+      const changes: Record<string, { from: unknown; to: unknown }> = {}
+      const updateKeys = Object.keys(updatePayload)
+
+      for (const key of updateKeys) {
         if (key !== 'updatedAt' && originalData && originalData[key] !== updatePayload[key]) {
-          acc[key] = { from: originalData[key], to: updatePayload[key] }
+          changes[key] = { from: originalData[key], to: updatePayload[key] }
         }
-        return acc
-      }, {} as Record<string, unknown>)
+      }
 
       if (Object.keys(changes).length > 0) {
         await AuditService.logAssetUpdated(userId, userEmail, input.id, input.assetTag || 'unknown', changes)

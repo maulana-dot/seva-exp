@@ -182,7 +182,7 @@ export const csvImportSchema = z.object({
 // Search and pagination
 export const searchSchema = z.object({
   query: z.string().max(200).optional(),
-  filters: z.record(z.string()).optional(),
+  filters: z.record(z.string(), z.string()).optional(),
   sort: z.object({
     field: z.string(),
     direction: z.enum(['asc', 'desc']),
