@@ -44,7 +44,6 @@ export default function FormBuilderPage() {
     settings: {
       allowMultipleSubmissions: true,
       requireAuthentication: false,
-      showProgressBar: false,
       confirmationMessage: 'Thank you for your submission!'
     }
   })
@@ -72,7 +71,11 @@ export default function FormBuilderPage() {
       options: ['select', 'radio', 'checkbox'].includes(type) ? [
         { id: crypto.randomUUID(), label: 'Option 1', value: 'option_1' },
         { id: crypto.randomUUID(), label: 'Option 2', value: 'option_2' },
-      ] : undefined
+      ] : undefined,
+      validation: ['text', 'textarea'].includes(type) ? {
+        min: 1,
+        max: type === 'text' ? 255 : 1000
+      } : undefined
     }
 
     setForm(prev => ({
@@ -458,19 +461,6 @@ export default function FormBuilderPage() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="progress-bar" className="text-sm">
-                      Show Progress Bar
-                    </Label>
-                    <Switch
-                      id="progress-bar"
-                      checked={form.settings?.showProgressBar}
-                      onCheckedChange={(checked) => setForm(prev => ({
-                        ...prev,
-                        settings: { ...prev.settings!, showProgressBar: checked }
-                      }))}
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmation-message" className="text-sm">

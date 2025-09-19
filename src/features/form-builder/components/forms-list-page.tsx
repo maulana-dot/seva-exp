@@ -143,7 +143,10 @@ export default function FormsListPage() {
   }
 
   const FormCard = ({ form }: { form: CustomForm }) => (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card
+      className="hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => navigate(`/forms/${form.id}/submissions`)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
@@ -158,7 +161,11 @@ export default function FormsListPage() {
             </Badge>
             <DropdownMenu>
               <DropdownTrigger>
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownTrigger>
@@ -234,7 +241,10 @@ export default function FormsListPage() {
   )
 
   const FormRow = ({ form }: { form: CustomForm }) => (
-    <Card>
+    <Card
+      className="cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => navigate(`/forms/${form.id}/submissions`)}
+    >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 flex-1 min-w-0">
@@ -263,7 +273,11 @@ export default function FormsListPage() {
 
             <DropdownMenu>
               <DropdownTrigger>
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownTrigger>

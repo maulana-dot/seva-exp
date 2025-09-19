@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { useForm } from '../hooks/use-forms'
-import { useFormSubmissionsByForm } from '../hooks/use-form-submissions'
+import { useFormSubmissionsByForm, useFormSubmissions } from '../hooks/use-form-submissions'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import {
@@ -24,12 +24,39 @@ export default function FormSubmissionsPage() {
   const { formId } = useParams<{ formId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { canManageAllForms } = usePermissions()
+  const { canManageAllForms, isAdmin } = usePermissions()
+
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all')
 
   const { data: form, isLoading: formLoading } = useForm(formId || '')
-  const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByForm(formId || '')
+
+  // Get submissions based on department filter for admins
+  const submissionsFilters = formId ? { formId } : {}
+  if (isAdmin && departmentFilter !== 'all') {
+    submissionsFilters.submittedByDepartment = departmentFilter
+    delete submissionsFilters.formId // Remove formId when filtering by department
+  }
+
+  const { data: allSubmissions = [], isLoading: allSubmissionsLoading } = useFormSubmissions(
+    isAdmin && departmentFilter !== 'all' ? submissionsFilters : undefined
+  )
+  const { data: formSubmissions = [], isLoading: formSubmissionsLoading } = useFormSubmissionsByForm(formId || '')
+
+  // Use appropriate submissions based on filter
+  const submissions = isAdmin && departmentFilter !== 'all'
+    ? allSubmissions.filter(sub => sub.formId === formId)
+    : formSubmissions
+  const submissionsLoading = isAdmin && departmentFilter !== 'all' ? allSubmissionsLoading : formSubmissionsLoading
 
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null)
+
+  const departmentOptions = [
+    { value: 'all', label: 'All Departments' },
+    { value: 'ACC', label: 'ACC - Accounting' },
+    { value: 'SEVA', label: 'SEVA - Service A' },
+    { value: 'TAF', label: 'TAF - Technical Affairs' },
+    { value: 'FIF', label: 'FIF - Finance' },
+  ]
 
   // Check permissions
   const canViewSubmissions = canManageAllForms || (form && form.createdBy === user?.firebaseUid)
@@ -66,29 +93,81 @@ export default function FormSubmissionsPage() {
     }
   ]
 
-  // Add form field columns (show first 4 fields as preview)
+  // Add department column for admins
+  if (isAdmin) {
+    columns.push({
+      id: 'submittedByDepartment',
+      header: 'Department',
+      accessorKey: 'submittedByDepartment',
+      sortable: true,
+      searchable: true,
+      cell: (value) => (
+        <div className="flex items-center space-x-2">
+          <Badge variant="outline" className="text-xs">
+            {value || 'N/A'}
+          </Badge>
+        </div>
+      ),
+      width: '120px'
+    })
+  }
+
+  // Add form field columns (show first 6 fields as preview)
   if (form?.fields) {
-    form.fields.slice(0, 4).forEach((field, index) => {
+    form.fields.slice(0, 6).forEach((field, index) => {
       columns.push({
         id: `field_${field.id}`,
         header: field.label,
         accessorFn: (row: FormSubmission) => row.submissionData[field.id],
         sortable: true,
         searchable: true,
-        cell: (value) => (
-          <div className="max-w-32 truncate" title={formatFieldValue(value)}>
-            <span className="text-sm">{formatFieldValue(value)}</span>
-          </div>
-        )
+        cell: (value) => {
+          const displayValue = formatFieldValue(value, field.type)
+          const isFile = field.type === 'file' && typeof value === 'string' && value.startsWith('http')
+
+          return (
+            <div className="max-w-32 truncate" title={displayValue}>
+              {isFile ? (
+                <a
+                  href={value as string}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {displayValue}
+                </a>
+              ) : (
+                <span className="text-sm">{displayValue}</span>
+              )}
+            </div>
+          )
+        }
       })
     })
   }
 
 
-  const formatFieldValue = (value: unknown): string => {
+  const formatFieldValue = (value: unknown, fieldType?: string): string => {
     if (value === null || value === undefined) return '-'
     if (typeof value === 'boolean') return value ? 'Yes' : 'No'
     if (Array.isArray(value)) return value.join(', ')
+
+    // Handle file URLs
+    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
+      // Extract filename from URL
+      try {
+        const url = new URL(value)
+        const pathParts = url.pathname.split('/')
+        const filename = pathParts[pathParts.length - 1]
+        // Remove timestamp prefix if present
+        const cleanFilename = filename.replace(/^\d+_/, '')
+        return cleanFilename || 'Uploaded File'
+      } catch {
+        return 'Uploaded File'
+      }
+    }
+
     return String(value)
   }
 
@@ -106,9 +185,10 @@ export default function FormSubmissionsPage() {
         `"${submission.submittedAt.toLocaleString()}"`,
         `"${submission.submittedBy || 'Anonymous'}"`,
         ...fieldNames.map(fieldName => {
-          const fieldKey = form?.fields?.find(f => f.label === fieldName)?.id
+          const field = form?.fields?.find(f => f.label === fieldName)
+          const fieldKey = field?.id
           const value = fieldKey ? submission.submissionData[fieldKey] : ''
-          return `"${formatFieldValue(value).replace(/"/g, '""')}"`
+          return `"${formatFieldValue(value, field?.type).replace(/"/g, '""')}"`
         })
       ].join(','))
     ].join('\n')
@@ -190,6 +270,19 @@ export default function FormSubmissionsPage() {
             </div>
 
             <div className="flex items-center space-x-2">
+              {isAdmin && (
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {departmentOptions.map((dept) => (
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               {submissions.length > 0 && (
                 <Button variant="outline" onClick={exportSubmissions}>
                   <Download className="h-4 w-4 mr-2" />
@@ -285,7 +378,23 @@ export default function FormSubmissionsPage() {
                       <div className="text-sm text-gray-600">{field.description}</div>
                     )}
                     <div className="text-gray-900 bg-gray-50 p-3 rounded-md min-h-[2.5rem] flex items-center">
-                      {value ? formatFieldValue(value) : <span className="text-gray-400">No response</span>}
+                      {value ? (
+                        field.type === 'file' && typeof value === 'string' && value.startsWith('http') ? (
+                          <a
+                            href={value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>{formatFieldValue(value, field.type)}</span>
+                          </a>
+                        ) : (
+                          formatFieldValue(value, field.type)
+                        )
+                      ) : (
+                        <span className="text-gray-400">No response</span>
+                      )}
                     </div>
                   </div>
                 )

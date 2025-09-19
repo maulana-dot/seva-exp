@@ -31,6 +31,7 @@ export class FormSubmissionService {
         formTitle: input.formTitle,
         submissionData: input.submissionData,
         submittedBy: input.submittedBy || null,
+        submittedByDepartment: input.submittedByDepartment || null,
         submittedAt: Timestamp.now(),
         ipAddress: input.ipAddress || null,
         userAgent: input.userAgent || null,
@@ -62,6 +63,8 @@ export class FormSubmissionService {
         q = query(q, where('formId', '==', filters.formId))
       } else if (filters.submittedBy) {
         q = query(q, where('submittedBy', '==', filters.submittedBy))
+      } else if (filters.submittedByDepartment) {
+        q = query(q, where('submittedByDepartment', '==', filters.submittedByDepartment))
       } else if (filters.startDate) {
         q = query(q, where('submittedAt', '>=', Timestamp.fromDate(filters.startDate)))
       } else if (filters.endDate) {
@@ -79,6 +82,7 @@ export class FormSubmissionService {
           formTitle: data.formTitle,
           submissionData: data.submissionData,
           submittedBy: data.submittedBy,
+          submittedByDepartment: data.submittedByDepartment,
           submittedAt: data.submittedAt.toDate(),
           ipAddress: data.ipAddress,
           userAgent: data.userAgent,
@@ -119,6 +123,7 @@ export class FormSubmissionService {
         formTitle: data.formTitle,
         submissionData: data.submissionData,
         submittedBy: data.submittedBy,
+        submittedByDepartment: data.submittedByDepartment,
         submittedAt: data.submittedAt.toDate(),
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
@@ -138,5 +143,9 @@ export class FormSubmissionService {
 
   static async getSubmissionsByUser(userId: string): Promise<FormSubmission[]> {
     return this.getSubmissions({ submittedBy: userId })
+  }
+
+  static async getSubmissionsByDepartment(department: string): Promise<FormSubmission[]> {
+    return this.getSubmissions({ submittedByDepartment: department })
   }
 }

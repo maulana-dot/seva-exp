@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { deleteUser as deleteAuthUser } from 'firebase/auth'
-import { auth, db } from '@/libs/firebase'
+import { auth, adminAuth, db } from '@/libs/firebase'
 import { logger } from '@/utils/logger'
 import { AuditService } from '@/features/audit/services/audit.service'
 import type { AuthUser } from '@/entities/auth/auth.types'
@@ -52,8 +52,8 @@ export class UserManagementService {
     try {
       logger.info('Creating new user', { email: input.email, createdBy })
 
-      // Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, input.email, input.password)
+      // Use the secondary auth instance to create user without affecting current session
+      const userCredential = await createUserWithEmailAndPassword(adminAuth, input.email, input.password)
       const firebaseUser = userCredential.user
 
       // Create user document in Firestore

@@ -4,6 +4,7 @@ export interface FormSubmission {
   formTitle: string
   submissionData: Record<string, unknown>
   submittedBy?: string // User ID if authenticated
+  submittedByDepartment?: string // User's department
   submittedAt: Date
   ipAddress?: string
   userAgent?: string
@@ -14,6 +15,7 @@ export interface CreateFormSubmissionInput {
   formTitle: string
   submissionData: Record<string, unknown>
   submittedBy?: string
+  submittedByDepartment?: string
   ipAddress?: string
   userAgent?: string
 }
@@ -21,6 +23,7 @@ export interface CreateFormSubmissionInput {
 export interface FormSubmissionFilters {
   formId?: string
   submittedBy?: string
+  submittedByDepartment?: string
   startDate?: Date
   endDate?: Date
 }

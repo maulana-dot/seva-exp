@@ -16,6 +16,7 @@ const FormsListPage = lazy(() => import('@/features/form-builder/components/form
 const FormViewPage = lazy(() => import('@/features/form-builder/components/form-view-page'))
 const FormDetailPage = lazy(() => import('@/features/form-builder/components/form-detail-page'))
 const FormSubmissionsPage = lazy(() => import('@/features/form-builder/components/form-submissions-page'))
+const MySubmissionsPage = lazy(() => import('@/features/form-builder/components/my-submissions-page'))
 const AdminSetupPage = lazy(() => import('@/features/admin-setup/components/admin-setup-page'))
 
 export const router = createBrowserRouter([
@@ -76,6 +77,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FormSubmissionsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-submissions',
+        element: (
+          <ProtectedRoute>
+            <MySubmissionsPage />
           </ProtectedRoute>
         ),
       },

@@ -168,6 +168,7 @@ export default function FormViewPage() {
           formTitle: form.title || 'Untitled Form',
           submissionData: formData,
           submittedBy: user?.firebaseUid,
+          submittedByDepartment: user?.department,
           userAgent,
           ipAddress,
         })
@@ -560,12 +561,6 @@ export default function FormViewPage() {
             )}
           </CardContent>
         </Card>
-
-        {form.settings?.confirmationMessage && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-sm text-green-800">{form.settings.confirmationMessage}</p>
-          </div>
-        )}
       </div>
     </div>
   )

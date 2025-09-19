@@ -3,7 +3,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { DropdownMenu, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
-import { LogOut, LayoutDashboard, Users, User, ChevronDown, Activity, FileText, Database } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, User, ChevronDown, Activity, FileText, Database, List } from 'lucide-react'
 
 export function Navigation() {
   const { user, logout } = useAuth()
@@ -118,6 +118,13 @@ export function Navigation() {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownItem>
+
+                <Link to="/my-submissions">
+                  <DropdownItem>
+                    <List className="mr-2 h-4 w-4" />
+                    My Submissions
+                  </DropdownItem>
+                </Link>
 
                 <DropdownSeparator />
 

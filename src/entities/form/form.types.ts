@@ -43,7 +43,6 @@ export interface CustomForm {
   settings: {
     allowMultipleSubmissions: boolean
     requireAuthentication: boolean
-    showProgressBar: boolean
     confirmationMessage: string
     redirectUrl?: string
   }

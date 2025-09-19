@@ -14,7 +14,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
+// Create a secondary app instance for admin operations
+const adminApp = initializeApp(firebaseConfig, 'admin')
+
 export const auth = getAuth(app)
+export const adminAuth = getAuth(adminApp)
 export const db = getFirestore(app)
 export const storage = getStorage(app)
 export default app

@@ -11,6 +11,7 @@ const QUERY_KEYS = {
   submission: (id: string) => ['submissions', id],
   submissionsByForm: (formId: string) => ['submissions', 'form', formId],
   submissionsByUser: (userId: string) => ['submissions', 'user', userId],
+  submissionsByDepartment: (department: string) => ['submissions', 'department', department],
 } as const
 
 // Get all submissions with filters
@@ -48,6 +49,16 @@ export const useFormSubmissionsByUser = (userId: string) => {
     queryKey: QUERY_KEYS.submissionsByUser(userId),
     queryFn: () => FormSubmissionService.getSubmissionsByUser(userId),
     enabled: !!userId,
+    staleTime: 30000, // 30 seconds
+  })
+}
+
+// Get submissions by department
+export const useFormSubmissionsByDepartment = (department: string) => {
+  return useQuery({
+    queryKey: QUERY_KEYS.submissionsByDepartment(department),
+    queryFn: () => FormSubmissionService.getSubmissionsByDepartment(department),
+    enabled: !!department,
     staleTime: 30000, // 30 seconds
   })
 }
