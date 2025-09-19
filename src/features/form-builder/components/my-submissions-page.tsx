@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useQueries } from '@tanstack/react-query'
 import { useForm, useForms } from '../hooks/use-forms'
-import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
+import { useFormSubmissions, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
+import { usePermissions } from '@/features/authentication/hooks/use-permissions'
 import { AuditService } from '@/features/audit/services/audit.service'
 import { FormService } from '../services/form.service'
 import {
@@ -30,8 +31,17 @@ export default function MySubmissionsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const { isAdmin } = usePermissions()
+
   const { data: forms = [], isLoading: formsLoading } = useForms()
-  const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByUser(user?.firebaseUid || '')
+
+  const submissionFilters = useMemo(() => {
+    if (isAdmin) return undefined
+    const firebaseUid = user?.firebaseUid
+    return firebaseUid ? { submittedBy: firebaseUid } : { submittedBy: '' }
+  }, [isAdmin, user?.firebaseUid])
+
+  const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissions(submissionFilters)
   const updateSubmissionMutation = useUpdateFormSubmission()
 
   const uniqueFormIds = useMemo(
