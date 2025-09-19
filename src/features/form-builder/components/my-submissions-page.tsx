@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,11 @@ import { usePermissions } from '@/features/authentication/hooks/use-permissions'
 import { AuditService } from '@/features/audit/services/audit.service'
 import { FormService } from '../services/form.service'
 import { FormSubmissionService } from '../services/form-submission.service'
+import {
+  buildSubmissionFieldColumns,
+  buildSubmissionFieldInfo,
+  formatSubmissionFieldValue,
+} from '../utils/submission-table'
 import {
   ArrowLeft,
   FileText,
@@ -34,6 +39,7 @@ export default function MySubmissionsPage() {
   const { user } = useAuth()
 
   const { isAdmin } = usePermissions()
+  const isStandardUser = user?.role === 'user'
 
   const { data: forms = [], isLoading: formsLoading } = useForms()
 
@@ -159,52 +165,8 @@ export default function MySubmissionsPage() {
     }))
   }
 
-  const formatFieldValue = (value: unknown, fieldType?: string): string => {
-    if (value === null || value === undefined) return '-'
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-    if (Array.isArray(value)) return value.join(', ')
-
-    // Handle file URLs
-    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
-      try {
-        const url = new URL(value)
-        const pathParts = url.pathname.split('/')
-        const filename = pathParts[pathParts.length - 1]
-        const cleanFilename = filename.replace(/^\d+_/, '')
-        return cleanFilename || 'Uploaded File'
-      } catch {
-        return 'Uploaded File'
-      }
-    }
-
-    return String(value)
-  }
-
-  const renderDisplayValue = (value: unknown, fieldType?: string): ReactNode => {
-    const isEmptyArray = Array.isArray(value) && value.length === 0
-    if (value === null || value === undefined || value === '' || isEmptyArray) {
-      return <span className="text-gray-400">No response</span>
-    }
-
-    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
-      return (
-        <a
-          href={value}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
-        >
-          <FileText className="h-4 w-4" />
-          <span>{formatFieldValue(value, fieldType)}</span>
-        </a>
-      )
-    }
-
-    return <>{formatFieldValue(value, fieldType)}</>
-  }
-
   const buildColumnsForGroup = (form: CustomForm | undefined, fieldIds: string[]): DataTableColumn<FormSubmission>[] => {
-    const columns: DataTableColumn<FormSubmission>[] = [
+    const baseColumns: DataTableColumn<FormSubmission>[] = [
       {
         id: 'submittedAt',
         header: 'Submission Date',
@@ -221,37 +183,12 @@ export default function MySubmissionsPage() {
       },
     ]
 
-    const knownFieldIds = new Set<string>()
+    const fieldInfo = buildSubmissionFieldInfo(form, fieldIds)
+    const fieldColumns = buildSubmissionFieldColumns(fieldInfo, {
+      columnIdPrefix: form ? `field-${form.id}` : 'field',
+    })
 
-    if (form?.fields?.length) {
-      const sortedFields = [...form.fields].sort((a, b) => a.order - b.order)
-      sortedFields.forEach((field) => {
-        knownFieldIds.add(field.id)
-        columns.push({
-          id: `field-${form.id}-${field.id}`,
-          header: field.label,
-          searchable: true,
-          sortable: false,
-          accessorFn: (row) => row.submissionData[field.id],
-          cell: (value) => renderDisplayValue(value, field.type),
-        })
-      })
-    }
-
-    fieldIds
-      .filter((fieldId) => !knownFieldIds.has(fieldId))
-      .forEach((fieldId) => {
-        columns.push({
-          id: `fallback-${fieldId}`,
-          header: fieldId,
-          searchable: true,
-          sortable: false,
-          accessorFn: (row) => row.submissionData[fieldId],
-          cell: (value) => renderDisplayValue(value),
-        })
-      })
-
-    return columns
+    return [...baseColumns, ...fieldColumns]
   }
 
   const groupedSubmissions = useMemo(() => {
@@ -338,13 +275,15 @@ export default function MySubmissionsPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/forms')}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Forms
-              </Button>
+              {!isStandardUser && (
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/forms')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Forms
+                </Button>
+              )}
               <div className="flex items-center space-x-2">
                 <User className="h-6 w-6 text-blue-600" />
                 <h1 className="text-xl font-bold">My Submissions</h1>
@@ -376,12 +315,14 @@ export default function MySubmissionsPage() {
             <p className="text-gray-600 mb-4">
               You haven't submitted any forms yet.
             </p>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/forms')}
-            >
-              Browse Forms
-            </Button>
+            {!isStandardUser && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/forms')}
+              >
+                Browse Forms
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -478,7 +419,7 @@ export default function MySubmissionsPage() {
                         <div key={fieldId} className="space-y-2">
                           <div className="font-medium text-gray-900">{fieldId}</div>
                           <div className="text-gray-900 bg-gray-50 p-3 rounded-md min-h-[2.5rem] flex items-center">
-                            {formatFieldValue(value)}
+                          {formatSubmissionFieldValue(value)}
                           </div>
                         </div>
                       ))}
@@ -594,7 +535,7 @@ export default function MySubmissionsPage() {
                           )}
                           {field.type === 'file' && (
                             <div className="text-gray-600">
-                              File uploads cannot be edited. Current file: {formatFieldValue(value, field.type)}
+                              File uploads cannot be edited. Current file: {formatSubmissionFieldValue(value, field.type)}
                             </div>
                           )}
                         </div>
@@ -610,10 +551,10 @@ export default function MySubmissionsPage() {
                                 className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
                               >
                                 <FileText className="h-4 w-4" />
-                                <span>{formatFieldValue(value, field.type)}</span>
+                                <span>{formatSubmissionFieldValue(value, field.type)}</span>
                               </a>
                             ) : (
-                              formatFieldValue(value, field.type)
+                              formatSubmissionFieldValue(value, field.type)
                             )
                           ) : (
                             <span className="text-gray-400">No response</span>

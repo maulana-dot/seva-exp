@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -12,13 +12,18 @@ import { useAuth } from '@/features/authentication/hooks/use-auth'
 import {
   ArrowLeft,
   FileText,
-  Eye,
   Calendar,
   User,
   Download
 } from 'lucide-react'
 import { formatDateTime } from '@/utils/date-format'
 import type { FormSubmission, FormSubmissionFilters } from '@/entities/form-submission/form-submission.types'
+import {
+  buildSubmissionFieldColumns,
+  buildSubmissionFieldInfo,
+  collectSubmissionFieldIds,
+  formatSubmissionFieldValue,
+} from '../utils/submission-table'
 
 export default function FormSubmissionsPage() {
   const { formId } = useParams<{ formId: string }>()
@@ -61,136 +66,101 @@ export default function FormSubmissionsPage() {
   // Check permissions
   const canViewSubmissions = canManageAllForms || (form && form.createdBy === user?.firebaseUid)
 
-  // Define columns for the data table
-  const columns: DataTableColumn<FormSubmission>[] = [
-    {
-      id: 'submittedAt',
-      header: 'Submission Date',
-      accessorKey: 'submittedAt',
-      sortable: true,
-      searchable: false,
-      cell: (value) => (
-        <div className="flex items-center space-x-2">
-          <Calendar className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{formatDateTime(value)}</span>
-        </div>
-      ),
-      width: '180px'
-    },
-    {
-      id: 'submittedBy',
-      header: 'Submitted By',
-      accessorKey: 'submittedBy',
-      sortable: true,
-      searchable: true,
-      cell: (value) => (
-        <div className="flex items-center space-x-2">
-          <User className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{value || 'Anonymous'}</span>
-        </div>
-      ),
-      width: '150px'
-    }
-  ]
+  const fieldIds = useMemo(() => collectSubmissionFieldIds(submissions), [submissions])
+  const fieldInfo = useMemo(
+    () => buildSubmissionFieldInfo(form, fieldIds),
+    [form, fieldIds]
+  )
 
-  // Add department column for admins
-  if (isAdmin) {
-    columns.push({
-      id: 'submittedByDepartment',
-      header: 'Department',
-      accessorKey: 'submittedByDepartment',
-      sortable: true,
-      searchable: true,
-      cell: (value) => (
-        <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="text-xs">
-            {value || 'N/A'}
-          </Badge>
-        </div>
-      ),
-      width: '120px'
-    })
-  }
-
-  // Add form field columns (show first 6 fields as preview)
-  if (form?.fields) {
-    form.fields.slice(0, 6).forEach((field, index) => {
-      columns.push({
-        id: `field_${field.id}`,
-        header: field.label,
-        accessorFn: (row: FormSubmission) => row.submissionData[field.id],
+  const columns: DataTableColumn<FormSubmission>[] = useMemo(() => {
+    const baseColumns: DataTableColumn<FormSubmission>[] = [
+      {
+        id: 'submittedAt',
+        header: 'Submission Date',
+        accessorKey: 'submittedAt',
+        sortable: true,
+        searchable: false,
+        cell: (value) => (
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{formatDateTime(value)}</span>
+          </div>
+        ),
+        width: '180px',
+      },
+      {
+        id: 'submittedBy',
+        header: 'Submitted By',
+        accessorKey: 'submittedBy',
         sortable: true,
         searchable: true,
-        cell: (value) => {
-          const displayValue = formatFieldValue(value, field.type)
-          const isFile = field.type === 'file' && typeof value === 'string' && value.startsWith('http')
+        cell: (value) => (
+          <div className="flex items-center space-x-2">
+            <User className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{value || 'Anonymous'}</span>
+          </div>
+        ),
+        width: '150px',
+      },
+    ]
 
-          return (
-            <div className="max-w-32 truncate" title={displayValue}>
-              {isFile ? (
-                <a
-                  href={value as string}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {displayValue}
-                </a>
-              ) : (
-                <span className="text-sm">{displayValue}</span>
-              )}
-            </div>
-          )
-        }
+    if (isAdmin) {
+      baseColumns.push({
+        id: 'submittedByDepartment',
+        header: 'Department',
+        accessorKey: 'submittedByDepartment',
+        sortable: true,
+        searchable: true,
+        cell: (value) => (
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="text-xs">
+              {value || 'N/A'}
+            </Badge>
+          </div>
+        ),
+        width: '120px',
       })
-    })
-  }
-
-
-  const formatFieldValue = (value: unknown, fieldType?: string): string => {
-    if (value === null || value === undefined) return '-'
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-    if (Array.isArray(value)) return value.join(', ')
-
-    // Handle file URLs
-    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
-      // Extract filename from URL
-      try {
-        const url = new URL(value)
-        const pathParts = url.pathname.split('/')
-        const filename = pathParts[pathParts.length - 1]
-        // Remove timestamp prefix if present
-        const cleanFilename = filename.replace(/^\d+_/, '')
-        return cleanFilename || 'Uploaded File'
-      } catch {
-        return 'Uploaded File'
-      }
     }
 
-    return String(value)
-  }
+    const fieldColumns = buildSubmissionFieldColumns(fieldInfo, {
+      columnIdPrefix: formId ? `field-${formId}` : 'field',
+    })
+
+    return [...baseColumns, ...fieldColumns]
+  }, [fieldInfo, formId, isAdmin])
 
   const exportSubmissions = () => {
     if (submissions.length === 0) return
 
-    // Get all unique field names from form
-    const fieldNames = form?.fields?.map(field => field.label) || []
-    const headers = ['Submission Date', 'Submitted By', ...fieldNames]
+    const escapeCsv = (value: string) => value.replace(/"/g, '""')
 
-    // Create CSV content
+    const headers = [
+      'Submission Date',
+      'Submitted By',
+      ...(isAdmin ? ['Department'] : []),
+      ...fieldInfo.map((field) => field.label),
+    ]
+
     const csvContent = [
       headers.join(','),
-      ...submissions.map(submission => [
-        `"${submission.submittedAt.toLocaleString()}"`,
-        `"${submission.submittedBy || 'Anonymous'}"`,
-        ...fieldNames.map(fieldName => {
-          const field = form?.fields?.find(f => f.label === fieldName)
-          const fieldKey = field?.id
-          const value = fieldKey ? submission.submissionData[fieldKey] : ''
-          return `"${formatFieldValue(value, field?.type).replace(/"/g, '""')}"`
+      ...submissions.map((submission) => {
+        const row: string[] = [
+          `"${escapeCsv(submission.submittedAt.toLocaleString())}"`,
+          `"${escapeCsv(submission.submittedBy || 'Anonymous')}"`,
+        ]
+
+        if (isAdmin) {
+          row.push(`"${escapeCsv(submission.submittedByDepartment || 'N/A')}"`)
+        }
+
+        fieldInfo.forEach((field) => {
+          const value = submission.submissionData[field.id]
+          const formatted = formatSubmissionFieldValue(value, field.type)
+          row.push(`"${escapeCsv(formatted)}"`)
         })
-      ].join(','))
+
+        return row.join(',')
+      }),
     ].join('\n')
 
     // Download CSV
@@ -387,10 +357,10 @@ export default function FormSubmissionsPage() {
                             className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
                           >
                             <FileText className="h-4 w-4" />
-                            <span>{formatFieldValue(value, field.type)}</span>
+                            <span>{formatSubmissionFieldValue(value, field.type)}</span>
                           </a>
                         ) : (
-                          formatFieldValue(value, field.type)
+                          formatSubmissionFieldValue(value, field.type)
                         )
                       ) : (
                         <span className="text-gray-400">No response</span>

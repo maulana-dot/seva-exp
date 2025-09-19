@@ -24,6 +24,10 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
+    if (user.role === 'user') {
+      return <Navigate to="/my-submissions" replace />
+    }
+
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

@@ -27,7 +27,7 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <DashboardPage />
           </ProtectedRoute>
         ),
@@ -35,7 +35,7 @@ export const router = createBrowserRouter([
       {
         path: 'users',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <UserManagementPage />
           </ProtectedRoute>
         ),
@@ -51,7 +51,7 @@ export const router = createBrowserRouter([
       {
         path: 'forms',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormsListPage />
           </ProtectedRoute>
         ),
@@ -59,7 +59,7 @@ export const router = createBrowserRouter([
       {
         path: 'forms/:formId',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormViewPage />
           </ProtectedRoute>
         ),
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
       {
         path: 'forms/:formId/detail',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormDetailPage />
           </ProtectedRoute>
         ),
@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
       {
         path: 'forms/:formId/submissions',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormSubmissionsPage />
           </ProtectedRoute>
         ),
@@ -91,7 +91,7 @@ export const router = createBrowserRouter([
       {
         path: 'form-builder/new',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormBuilderPage />
           </ProtectedRoute>
         ),
@@ -99,7 +99,7 @@ export const router = createBrowserRouter([
       {
         path: 'form-builder/:formId',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormBuilderPage />
           </ProtectedRoute>
         ),
@@ -107,7 +107,7 @@ export const router = createBrowserRouter([
       {
         path: 'form-builder/:formId/edit',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="manager">
             <FormBuilderPage />
           </ProtectedRoute>
         ),

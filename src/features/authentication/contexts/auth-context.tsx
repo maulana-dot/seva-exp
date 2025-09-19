@@ -11,6 +11,8 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>
 }
 
+const USER_ROLE_STORAGE_KEY = 'auth:userRole'
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 interface AuthProviderProps {
@@ -34,6 +36,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isLoading: false,
         isAuthenticated: false,
       })
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(USER_ROLE_STORAGE_KEY)
+      }
 
       // Log logout audit trail
       if (currentUser) {
@@ -75,6 +81,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
               isAuthenticated: true,
             })
 
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(USER_ROLE_STORAGE_KEY, user.role)
+            }
+
             logger.info('User authenticated', { userId: user.id, role: user.role })
           } else {
             // User document doesn't exist, create a basic one automatically
@@ -114,6 +124,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 isAuthenticated: true,
               })
 
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem(USER_ROLE_STORAGE_KEY, user.role)
+              }
+
               logger.info('User document created and authenticated', { userId: user.id, role: user.role })
             } catch (docError) {
               logger.error('Error creating user document', docError)
@@ -131,6 +145,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isLoading: false,
             isAuthenticated: false,
           })
+
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(USER_ROLE_STORAGE_KEY)
+          }
         }
       } else {
         setState({
@@ -138,6 +156,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isLoading: false,
           isAuthenticated: false,
         })
+
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(USER_ROLE_STORAGE_KEY)
+        }
       }
     })
 
