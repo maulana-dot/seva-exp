@@ -1,21 +1,20 @@
-import { useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useQueries } from '@tanstack/react-query'
 import { useForm, useForms } from '../hooks/use-forms'
 import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { AuditService } from '@/features/audit/services/audit.service'
+import { FormService } from '../services/form.service'
 import {
   ArrowLeft,
   FileText,
-  Eye,
   Calendar,
   User,
   Download,
@@ -25,6 +24,7 @@ import {
 } from 'lucide-react'
 import { formatDateTime } from '@/utils/date-format'
 import type { FormSubmission } from '@/entities/form-submission/form-submission.types'
+import type { CustomForm } from '@/entities/form/form.types'
 
 export default function MySubmissionsPage() {
   const navigate = useNavigate()
@@ -33,6 +33,42 @@ export default function MySubmissionsPage() {
   const { data: forms = [], isLoading: formsLoading } = useForms()
   const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByUser(user?.firebaseUid || '')
   const updateSubmissionMutation = useUpdateFormSubmission()
+
+  const uniqueFormIds = useMemo(
+    () => Array.from(new Set(submissions.map(submission => submission.formId))),
+    [submissions]
+  )
+
+  const missingFormIds = useMemo(
+    () => uniqueFormIds.filter(formId => !forms.some(form => form.id === formId)),
+    [uniqueFormIds, forms]
+  )
+
+  const missingFormQueries = useQueries({
+    queries: missingFormIds.map((formId) => ({
+      queryKey: ['forms', formId],
+      queryFn: () => FormService.getForm(formId),
+      enabled: true,
+      staleTime: 5 * 60 * 1000,
+    })),
+  })
+
+  const fetchedForms = useMemo(
+    () => missingFormQueries
+      .map(result => result.data)
+      .filter((form): form is CustomForm => Boolean(form)),
+    [missingFormQueries]
+  )
+
+  const combinedForms = useMemo(() => {
+    const map = new Map<string, CustomForm>()
+    forms.forEach(form => map.set(form.id, form))
+    fetchedForms.forEach(form => map.set(form.id, form))
+    return Array.from(map.values())
+  }, [forms, fetchedForms])
+
+  const additionalFormsLoading = missingFormQueries.some(result => result.isLoading)
+  const formsDataLoading = formsLoading || additionalFormsLoading
 
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -43,13 +79,17 @@ export default function MySubmissionsPage() {
 
   // Get form details for a submission
   function getFormForSubmission(formId: string) {
-    return forms.find(form => form.id === formId)
+    return combinedForms.find(form => form.id === formId)
   }
 
   const submissionForm = selectedSubmission
     ? getFormForSubmission(selectedSubmission.formId) || selectedForm || null
     : null
-  const isFormLoading = Boolean(selectedSubmission && !submissionForm && selectedFormLoading)
+  const isFormLoading = Boolean(
+    selectedSubmission &&
+    !submissionForm &&
+    (selectedFormLoading || formsDataLoading)
+  )
 
   // Handle edit mode
   const handleEditSubmission = (submission: FormSubmission) => {
@@ -98,6 +138,108 @@ export default function MySubmissionsPage() {
     }))
   }
 
+  const formatFieldValue = (value: unknown, fieldType?: string): string => {
+    if (value === null || value === undefined) return '-'
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+    if (Array.isArray(value)) return value.join(', ')
+
+    // Handle file URLs
+    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
+      try {
+        const url = new URL(value)
+        const pathParts = url.pathname.split('/')
+        const filename = pathParts[pathParts.length - 1]
+        const cleanFilename = filename.replace(/^\d+_/, '')
+        return cleanFilename || 'Uploaded File'
+      } catch {
+        return 'Uploaded File'
+      }
+    }
+
+    return String(value)
+  }
+
+  const renderDisplayValue = (value: unknown, fieldType?: string): ReactNode => {
+    const isEmptyArray = Array.isArray(value) && value.length === 0
+    if (value === null || value === undefined || value === '' || isEmptyArray) {
+      return <span className="text-gray-400">No response</span>
+    }
+
+    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
+      return (
+        <a
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
+        >
+          <FileText className="h-4 w-4" />
+          <span>{formatFieldValue(value, fieldType)}</span>
+        </a>
+      )
+    }
+
+    return <>{formatFieldValue(value, fieldType)}</>
+  }
+
+  const formsWithSubmissions = new Set(submissions.map(submission => submission.formId))
+  const multipleForms = formsWithSubmissions.size > 1
+
+  const fieldColumns: DataTableColumn<FormSubmission>[] = []
+  const coveredFormIds = new Set<string>()
+
+  combinedForms.forEach(form => {
+    if (!formsWithSubmissions.has(form.id)) return
+    coveredFormIds.add(form.id)
+
+    form.fields?.forEach(field => {
+      const headerLabel = multipleForms ? `${field.label} (${form.title})` : field.label
+
+      fieldColumns.push({
+        id: `field-${form.id}-${field.id}`,
+        header: headerLabel,
+        searchable: true,
+        sortable: false,
+        accessorFn: (row) => (row.formId === form.id ? row.submissionData[field.id] : undefined),
+        cell: (value, row) => (
+          row.formId === form.id
+            ? renderDisplayValue(value, field.type)
+            : <span className="text-gray-300">—</span>
+        ),
+      })
+    })
+  })
+
+  const fallbackFieldColumns = new Map<string, Set<string>>()
+
+  submissions.forEach(submission => {
+    if (coveredFormIds.has(submission.formId)) return
+
+    const fieldIds = Object.keys(submission.submissionData || {})
+    const seenFields = fallbackFieldColumns.get(submission.formId) ?? new Set<string>()
+
+    fieldIds.forEach(fieldId => {
+      if (seenFields.has(fieldId)) return
+      seenFields.add(fieldId)
+      fallbackFieldColumns.set(submission.formId, seenFields)
+
+      const headerLabel = multipleForms ? `${fieldId} (${submission.formTitle})` : fieldId
+
+      fieldColumns.push({
+        id: `fallback-${submission.formId}-${fieldId}`,
+        header: headerLabel,
+        searchable: true,
+        sortable: false,
+        accessorFn: (row) => (row.formId === submission.formId ? row.submissionData[fieldId] : undefined),
+        cell: (value, row) => (
+          row.formId === submission.formId
+            ? renderDisplayValue(value)
+            : <span className="text-gray-300">—</span>
+        ),
+      })
+    })
+  })
+
   // Define columns for the data table
   const columns: DataTableColumn<FormSubmission>[] = [
     {
@@ -126,52 +268,10 @@ export default function MySubmissionsPage() {
           <span className="text-sm font-medium">{value}</span>
         </div>
       ),
-      width: '250px'
+      width: '200px'
     },
-    {
-      id: 'actions',
-      header: 'Actions',
-      accessorKey: 'id',
-      sortable: false,
-      searchable: false,
-      cell: (value, row) => (
-        <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleEditSubmission(row)
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-      width: '100px'
-    }
+    ...fieldColumns
   ]
-
-  const formatFieldValue = (value: unknown, fieldType?: string): string => {
-    if (value === null || value === undefined) return '-'
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-    if (Array.isArray(value)) return value.join(', ')
-
-    // Handle file URLs
-    if (fieldType === 'file' && typeof value === 'string' && value.startsWith('http')) {
-      try {
-        const url = new URL(value)
-        const pathParts = url.pathname.split('/')
-        const filename = pathParts[pathParts.length - 1]
-        const cleanFilename = filename.replace(/^\d+_/, '')
-        return cleanFilename || 'Uploaded File'
-      } catch {
-        return 'Uploaded File'
-      }
-    }
-
-    return String(value)
-  }
 
   const exportSubmissions = () => {
     if (submissions.length === 0) return
@@ -196,7 +296,7 @@ export default function MySubmissionsPage() {
     URL.revokeObjectURL(url)
   }
 
-  if (formsLoading || submissionsLoading) {
+  if (formsDataLoading || submissionsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -253,6 +353,7 @@ export default function MySubmissionsPage() {
           onRowClick={setSelectedSubmission}
           onExport={submissions.length > 0 ? exportSubmissions : undefined}
           loading={submissionsLoading}
+          showRowActionButton={false}
           emptyMessage={
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />

@@ -48,6 +48,7 @@ export interface DataTableProps<T> {
   enableSearch?: boolean
   enablePagination?: boolean
   enableSorting?: boolean
+  showRowActionButton?: boolean
 }
 
 type SortDirection = 'asc' | 'desc' | null
@@ -65,6 +66,7 @@ export function DataTable<T>({
   enableSearch = true,
   enablePagination = true,
   enableSorting = true,
+  showRowActionButton = true,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -237,6 +239,8 @@ export function DataTable<T>({
     )
   }
 
+  const rowActionEnabled = Boolean(onRowClick && showRowActionButton)
+
   return (
     <Card>
       {(title || enableSearch || onExport) && (
@@ -292,7 +296,7 @@ export function DataTable<T>({
                       </div>
                     </TableHead>
                   ))}
-                  {onRowClick && (
+                  {rowActionEnabled && (
                     <TableHead className="w-[50px]">
                       <span className="sr-only">Actions</span>
                     </TableHead>
@@ -311,7 +315,7 @@ export function DataTable<T>({
                         {getCellValue(column, row)}
                       </TableCell>
                     ))}
-                    {onRowClick && (
+                    {rowActionEnabled && (
                       <TableCell>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
