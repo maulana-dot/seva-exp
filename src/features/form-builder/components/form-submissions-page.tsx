@@ -18,7 +18,7 @@ import {
   Download
 } from 'lucide-react'
 import { formatDateTime } from '@/utils/date-format'
-import type { FormSubmission } from '@/entities/form-submission/form-submission.types'
+import type { FormSubmission, FormSubmissionFilters } from '@/entities/form-submission/form-submission.types'
 
 export default function FormSubmissionsPage() {
   const { formId } = useParams<{ formId: string }>()
@@ -31,7 +31,7 @@ export default function FormSubmissionsPage() {
   const { data: form, isLoading: formLoading } = useForm(formId || '')
 
   // Get submissions based on department filter for admins
-  const submissionsFilters = formId ? { formId } : {}
+  const submissionsFilters: FormSubmissionFilters = formId ? { formId } : {}
   if (isAdmin && departmentFilter !== 'all') {
     submissionsFilters.submittedByDepartment = departmentFilter
     delete submissionsFilters.formId // Remove formId when filtering by department

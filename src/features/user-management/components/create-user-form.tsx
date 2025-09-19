@@ -68,7 +68,7 @@ export function CreateUserForm({ onSubmit, isSubmitting = false, onCancel }: Cre
       password: '',
       displayName: '',
       role: 'user',
-      department: '',
+      department: undefined,
       isActive: true,
     },
   })
