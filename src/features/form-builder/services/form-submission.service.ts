@@ -6,6 +6,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  updateDoc,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '@/libs/firebase'
@@ -147,5 +148,31 @@ export class FormSubmissionService {
 
   static async getSubmissionsByDepartment(department: string): Promise<FormSubmission[]> {
     return this.getSubmissions({ submittedByDepartment: department })
+  }
+
+  static async updateSubmission(id: string, submissionData: Record<string, any>): Promise<void> {
+    try {
+      console.log('Updating form submission', {
+        submissionId: id,
+        submissionData,
+      })
+
+      const docRef = doc(db, SUBMISSIONS_COLLECTION, id)
+      await updateDoc(docRef, {
+        submissionData,
+        updatedAt: Timestamp.now(),
+      })
+
+      console.log('Form submission updated successfully', {
+        submissionId: id,
+      })
+    } catch (error) {
+      console.error('Failed to update form submission', {
+        id,
+        submissionData,
+        error,
+      })
+      throw error
+    }
   }
 }

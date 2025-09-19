@@ -192,14 +192,14 @@ export function CreateUserForm({ onSubmit, isSubmitting = false, onCancel }: Cre
         </div>
 
         <div>
-          <Label htmlFor="department">Department</Label>
+          <Label htmlFor="department">Business Unit</Label>
           <select
             id="department"
             {...register('department')}
             disabled={isSubmitting}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Select department (optional)</option>
+            <option value="">Select business unit (optional)</option>
             {departmentOptions.map((dept) => (
               <option key={dept.value} value={dept.value}>
                 {dept.label}

@@ -99,3 +99,34 @@ export const useCreateFormSubmission = () => {
     },
   })
 }
+
+// Update form submission
+export const useUpdateFormSubmission = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (input: { id: string; submissionData: Record<string, any> }) => {
+      await FormSubmissionService.updateSubmission(input.id, input.submissionData)
+      return input.id
+    },
+    onSuccess: (submissionId, variables) => {
+      console.log('Form submission updated successfully', {
+        submissionId,
+      })
+
+      // Invalidate related queries
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.submissions,
+      })
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.submission(submissionId),
+      })
+    },
+    onError: (error, variables) => {
+      console.error('Failed to update form submission', {
+        error,
+        submissionId: variables.id,
+      })
+    },
+  })
+}

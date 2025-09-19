@@ -5,16 +5,23 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useForms } from '../hooks/use-forms'
-import { useFormSubmissionsByUser } from '../hooks/use-form-submissions'
+import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
+import { useAudit } from '@/features/audit/hooks/use-audit'
 import {
   ArrowLeft,
   FileText,
   Eye,
   Calendar,
   User,
-  Download
+  Download,
+  Edit,
+  Save,
+  X
 } from 'lucide-react'
 import { formatDateTime } from '@/utils/date-format'
 import type { FormSubmission } from '@/entities/form-submission/form-submission.types'
@@ -22,15 +29,67 @@ import type { FormSubmission } from '@/entities/form-submission/form-submission.
 export default function MySubmissionsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { logActivity } = useAudit()
 
   const { data: forms = [], isLoading: formsLoading } = useForms()
   const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByUser(user?.firebaseUid || '')
+  const updateSubmissionMutation = useUpdateFormSubmission()
 
   const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editFormData, setEditFormData] = useState<Record<string, any>>({})
 
   // Get form details for a submission
   const getFormForSubmission = (formId: string) => {
     return forms.find(form => form.id === formId)
+  }
+
+  // Handle edit mode
+  const handleEditSubmission = (submission: FormSubmission) => {
+    setSelectedSubmission(submission)
+    setEditFormData({ ...submission.submissionData })
+    setIsEditMode(true)
+  }
+
+  const handleSaveSubmission = async () => {
+    if (!selectedSubmission) return
+
+    try {
+      await updateSubmissionMutation.mutateAsync({
+        id: selectedSubmission.id,
+        submissionData: editFormData,
+      })
+
+      // Log the edit action for audit
+      await logActivity({
+        action: 'submission_edited',
+        category: 'form_management',
+        details: {
+          submissionId: selectedSubmission.id,
+          formId: selectedSubmission.formId,
+          formTitle: selectedSubmission.formTitle,
+        },
+        severity: 'medium',
+      })
+
+      setIsEditMode(false)
+      setSelectedSubmission(null)
+      setEditFormData({})
+    } catch (error) {
+      console.error('Failed to update submission', error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
+    setEditFormData({})
+  }
+
+  const handleFieldChange = (fieldId: string, value: any) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [fieldId]: value
+    }))
   }
 
   // Define columns for the data table
@@ -62,6 +121,28 @@ export default function MySubmissionsPage() {
         </div>
       ),
       width: '250px'
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      accessorKey: 'id',
+      sortable: false,
+      searchable: false,
+      cell: (value, row) => (
+        <div className="flex items-center space-x-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleEditSubmission(row)
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+      width: '100px'
     }
   ]
 
@@ -189,12 +270,28 @@ export default function MySubmissionsPage() {
         />
       </div>
 
-      {/* Submission Details Modal */}
-      <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+      {/* Submission Details/Edit Modal */}
+      <Dialog open={!!selectedSubmission} onOpenChange={() => {
+        setSelectedSubmission(null)
+        setIsEditMode(false)
+        setEditFormData({})
+      }}>
         {selectedSubmission && (
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Submission Details</DialogTitle>
+              <DialogTitle className="flex items-center justify-between">
+                <span>{isEditMode ? 'Edit Submission' : 'Submission Details'}</span>
+                {!isEditMode && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEditSubmission(selectedSubmission)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </DialogTitle>
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4" />
@@ -211,7 +308,9 @@ export default function MySubmissionsPage() {
               {(() => {
                 const form = getFormForSubmission(selectedSubmission.formId)
                 return form?.fields?.map((field) => {
-                  const value = selectedSubmission.submissionData[field.id]
+                  const value = isEditMode
+                    ? editFormData[field.id]
+                    : selectedSubmission.submissionData[field.id]
 
                   return (
                     <div key={field.id} className="space-y-2">
@@ -222,29 +321,150 @@ export default function MySubmissionsPage() {
                       {field.description && (
                         <div className="text-sm text-gray-600">{field.description}</div>
                       )}
-                      <div className="text-gray-900 bg-gray-50 p-3 rounded-md min-h-[2.5rem] flex items-center">
-                        {value ? (
-                          field.type === 'file' && typeof value === 'string' && value.startsWith('http') ? (
-                            <a
-                              href={value}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
+
+                      {isEditMode ? (
+                        // Edit mode - render form fields
+                        <div>
+                          {field.type === 'text' && (
+                            <Input
+                              value={value || ''}
+                              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              placeholder={`Enter ${field.label}`}
+                            />
+                          )}
+                          {field.type === 'textarea' && (
+                            <Textarea
+                              value={value || ''}
+                              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              placeholder={`Enter ${field.label}`}
+                              rows={3}
+                            />
+                          )}
+                          {field.type === 'email' && (
+                            <Input
+                              type="email"
+                              value={value || ''}
+                              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              placeholder={`Enter ${field.label}`}
+                            />
+                          )}
+                          {field.type === 'number' && (
+                            <Input
+                              type="number"
+                              value={value || ''}
+                              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              placeholder={`Enter ${field.label}`}
+                            />
+                          )}
+                          {field.type === 'select' && field.options && (
+                            <select
+                              value={value || ''}
+                              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
-                              <FileText className="h-4 w-4" />
-                              <span>{formatFieldValue(value, field.type)}</span>
-                            </a>
+                              <option value="">Select an option</option>
+                              {field.options.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {field.type === 'radio' && field.options && (
+                            <div className="space-y-2">
+                              {field.options.map((option) => (
+                                <label key={option.value} className="flex items-center space-x-2">
+                                  <input
+                                    type="radio"
+                                    name={field.id}
+                                    value={option.value}
+                                    checked={value === option.value}
+                                    onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                                    className="text-blue-600"
+                                  />
+                                  <span>{option.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {field.type === 'checkbox' && field.options && (
+                            <div className="space-y-2">
+                              {field.options.map((option) => {
+                                const checkboxValues = Array.isArray(value) ? value : []
+                                return (
+                                  <label key={option.value} className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      value={option.value}
+                                      checked={checkboxValues.includes(option.value)}
+                                      onChange={(e) => {
+                                        const currentValues = Array.isArray(value) ? value : []
+                                        if (e.target.checked) {
+                                          handleFieldChange(field.id, [...currentValues, option.value])
+                                        } else {
+                                          handleFieldChange(field.id, currentValues.filter(v => v !== option.value))
+                                        }
+                                      }}
+                                      className="text-blue-600"
+                                    />
+                                    <span>{option.label}</span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {field.type === 'file' && (
+                            <div className="text-gray-600">
+                              File uploads cannot be edited. Current file: {formatFieldValue(value, field.type)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // View mode - display values
+                        <div className="text-gray-900 bg-gray-50 p-3 rounded-md min-h-[2.5rem] flex items-center">
+                          {value ? (
+                            field.type === 'file' && typeof value === 'string' && value.startsWith('http') ? (
+                              <a
+                                href={value}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-2"
+                              >
+                                <FileText className="h-4 w-4" />
+                                <span>{formatFieldValue(value, field.type)}</span>
+                              </a>
+                            ) : (
+                              formatFieldValue(value, field.type)
+                            )
                           ) : (
-                            formatFieldValue(value, field.type)
-                          )
-                        ) : (
-                          <span className="text-gray-400">No response</span>
-                        )}
-                      </div>
+                            <span className="text-gray-400">No response</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })
               })()}
+
+              {isEditMode && (
+                <div className="flex justify-end space-x-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelEdit}
+                    disabled={updateSubmissionMutation.isPending}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSaveSubmission}
+                    disabled={updateSubmissionMutation.isPending}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {updateSubmissionMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              )}
             </div>
           </DialogContent>
         )}
