@@ -6,13 +6,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useQueries } from '@tanstack/react-query'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { useForm, useForms } from '../hooks/use-forms'
-import { useFormSubmissions, useUpdateFormSubmission } from '../hooks/use-form-submissions'
+import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
 import { AuditService } from '@/features/audit/services/audit.service'
 import { FormService } from '../services/form.service'
+import { FormSubmissionService } from '../services/form-submission.service'
 import {
   ArrowLeft,
   FileText,
@@ -35,13 +37,22 @@ export default function MySubmissionsPage() {
 
   const { data: forms = [], isLoading: formsLoading } = useForms()
 
-  const submissionFilters = useMemo(() => {
-    if (isAdmin) return undefined
-    const firebaseUid = user?.firebaseUid
-    return firebaseUid ? { submittedBy: firebaseUid } : { submittedBy: '' }
-  }, [isAdmin, user?.firebaseUid])
+  const adminSubmissionsQuery = useQuery({
+    queryKey: ['submissions', 'all'],
+    queryFn: () => FormSubmissionService.getSubmissions(),
+    enabled: isAdmin,
+    staleTime: 30000,
+  })
 
-  const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissions(submissionFilters)
+  const userSubmissionsQuery = useFormSubmissionsByUser(user?.firebaseUid || '')
+
+  const submissions = isAdmin
+    ? adminSubmissionsQuery.data || []
+    : userSubmissionsQuery.data || []
+
+  const submissionsLoading = isAdmin
+    ? adminSubmissionsQuery.isLoading
+    : userSubmissionsQuery.isLoading
   const updateSubmissionMutation = useUpdateFormSubmission()
 
   const uniqueFormIds = useMemo(
@@ -192,119 +203,122 @@ export default function MySubmissionsPage() {
     return <>{formatFieldValue(value, fieldType)}</>
   }
 
-  const formsWithSubmissions = new Set(submissions.map(submission => submission.formId))
-  const multipleForms = formsWithSubmissions.size > 1
-
-  const fieldColumns: DataTableColumn<FormSubmission>[] = []
-  const coveredFormIds = new Set<string>()
-
-  combinedForms.forEach(form => {
-    if (!formsWithSubmissions.has(form.id)) return
-    coveredFormIds.add(form.id)
-
-    form.fields?.forEach(field => {
-      const headerLabel = multipleForms ? `${field.label} (${form.title})` : field.label
-
-      fieldColumns.push({
-        id: `field-${form.id}-${field.id}`,
-        header: headerLabel,
-        searchable: true,
-        sortable: false,
-        accessorFn: (row) => (row.formId === form.id ? row.submissionData[field.id] : undefined),
-        cell: (value, row) => (
-          row.formId === form.id
-            ? renderDisplayValue(value, field.type)
-            : <span className="text-gray-300">—</span>
+  const buildColumnsForGroup = (form: CustomForm | undefined, fieldIds: string[]): DataTableColumn<FormSubmission>[] => {
+    const columns: DataTableColumn<FormSubmission>[] = [
+      {
+        id: 'submittedAt',
+        header: 'Submission Date',
+        accessorKey: 'submittedAt',
+        sortable: true,
+        searchable: false,
+        cell: (value) => (
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span className="text-sm">{formatDateTime(value)}</span>
+          </div>
         ),
+        width: '180px',
+      },
+    ]
+
+    const knownFieldIds = new Set<string>()
+
+    if (form?.fields?.length) {
+      const sortedFields = [...form.fields].sort((a, b) => a.order - b.order)
+      sortedFields.forEach((field) => {
+        knownFieldIds.add(field.id)
+        columns.push({
+          id: `field-${form.id}-${field.id}`,
+          header: field.label,
+          searchable: true,
+          sortable: false,
+          accessorFn: (row) => row.submissionData[field.id],
+          cell: (value) => renderDisplayValue(value, field.type),
+        })
+      })
+    }
+
+    fieldIds
+      .filter((fieldId) => !knownFieldIds.has(fieldId))
+      .forEach((fieldId) => {
+        columns.push({
+          id: `fallback-${fieldId}`,
+          header: fieldId,
+          searchable: true,
+          sortable: false,
+          accessorFn: (row) => row.submissionData[fieldId],
+          cell: (value) => renderDisplayValue(value),
+        })
+      })
+
+    return columns
+  }
+
+  const groupedSubmissions = useMemo(() => {
+    const map = new Map<string, { submissions: FormSubmission[]; fieldIds: Set<string> }>()
+
+    submissions.forEach((submission) => {
+      if (!map.has(submission.formId)) {
+        map.set(submission.formId, {
+          submissions: [],
+          fieldIds: new Set<string>(),
+        })
+      }
+
+      const group = map.get(submission.formId)!
+      group.submissions.push(submission)
+      Object.keys(submission.submissionData || {}).forEach((fieldId) => {
+        group.fieldIds.add(fieldId)
       })
     })
-  })
 
-  const fallbackFieldColumns = new Map<string, Set<string>>()
+    return Array.from(map.entries()).map(([formId, group]) => {
+      const form = combinedForms.find((f) => f.id === formId)
+      const title = form?.title || group.submissions[0]?.formTitle || 'Untitled Form'
+      const sortedSubmissions = [...group.submissions].sort(
+        (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()
+      )
 
-  submissions.forEach(submission => {
-    if (coveredFormIds.has(submission.formId)) return
+      return {
+        formId,
+        form,
+        title,
+        submissions: sortedSubmissions,
+        fieldIds: Array.from(group.fieldIds),
+      }
+    }).sort((a, b) => a.title.localeCompare(b.title))
+  }, [submissions, combinedForms])
 
-    const fieldIds = Object.keys(submission.submissionData || {})
-    const seenFields = fallbackFieldColumns.get(submission.formId) ?? new Set<string>()
+  const exportSubmissions = (subset: FormSubmission[], label: string) => {
+    if (subset.length === 0) return
 
-    fieldIds.forEach(fieldId => {
-      if (seenFields.has(fieldId)) return
-      seenFields.add(fieldId)
-      fallbackFieldColumns.set(submission.formId, seenFields)
+    const safeLabel = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'my_submissions'
 
-      const headerLabel = multipleForms ? `${fieldId} (${submission.formTitle})` : fieldId
-
-      fieldColumns.push({
-        id: `fallback-${submission.formId}-${fieldId}`,
-        header: headerLabel,
-        searchable: true,
-        sortable: false,
-        accessorFn: (row) => (row.formId === submission.formId ? row.submissionData[fieldId] : undefined),
-        cell: (value, row) => (
-          row.formId === submission.formId
-            ? renderDisplayValue(value)
-            : <span className="text-gray-300">—</span>
-        ),
-      })
-    })
-  })
-
-  // Define columns for the data table
-  const columns: DataTableColumn<FormSubmission>[] = [
-    {
-      id: 'submittedAt',
-      header: 'Submission Date',
-      accessorKey: 'submittedAt',
-      sortable: true,
-      searchable: false,
-      cell: (value) => (
-        <div className="flex items-center space-x-2">
-          <Calendar className="h-4 w-4 text-gray-400" />
-          <span className="text-sm">{formatDateTime(value)}</span>
-        </div>
-      ),
-      width: '180px'
-    },
-    {
-      id: 'formTitle',
-      header: 'Form',
-      accessorKey: 'formTitle',
-      sortable: true,
-      searchable: true,
-      cell: (value) => (
-        <div className="flex items-center space-x-2">
-          <FileText className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-medium">{value}</span>
-        </div>
-      ),
-      width: '200px'
-    },
-    ...fieldColumns
-  ]
-
-  const exportSubmissions = () => {
-    if (submissions.length === 0) return
-
-    // Create CSV content
     const csvContent = [
       ['Submission Date', 'Form Title', 'Form Data'].join(','),
-      ...submissions.map(submission => [
+      ...subset.map((submission) => [
         `"${submission.submittedAt.toLocaleString()}"`,
         `"${submission.formTitle}"`,
-        `"${JSON.stringify(submission.submissionData).replace(/"/g, '""')}"`
-      ].join(','))
+        `"${JSON.stringify(submission.submissionData).replace(/"/g, '""')}"`,
+      ].join(',')),
     ].join('\n')
 
-    // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `my_submissions_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `${safeLabel}_${new Date().toISOString().split('T')[0]}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
+
+  const exportAllSubmissions = () => exportSubmissions(submissions, 'all_submissions')
+
+  const totalSubmissions = submissions.length
+  const hasSubmissions = groupedSubmissions.length > 0
 
   if (formsDataLoading || submissionsLoading) {
     return (
@@ -336,13 +350,13 @@ export default function MySubmissionsPage() {
                 <h1 className="text-xl font-bold">My Submissions</h1>
               </div>
               <Badge variant="outline">
-                {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+                {totalSubmissions} submission{totalSubmissions !== 1 ? 's' : ''}
               </Badge>
             </div>
 
             <div className="flex items-center space-x-2">
-              {submissions.length > 0 && (
-                <Button variant="outline" onClick={exportSubmissions}>
+              {totalSubmissions > 0 && (
+                <Button variant="outline" onClick={exportAllSubmissions}>
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
@@ -353,38 +367,67 @@ export default function MySubmissionsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Submissions Data Table */}
-        <DataTable
-          data={submissions}
-          columns={columns}
-          title={`My Form Submissions (${submissions.length})`}
-          searchPlaceholder="Search my submissions..."
-          pageSize={15}
-          onRowClick={setSelectedSubmission}
-          onExport={submissions.length > 0 ? exportSubmissions : undefined}
-          loading={submissionsLoading}
-          showRowActionButton={false}
-          emptyMessage={
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No submissions yet
-              </h3>
-              <p className="text-gray-600 mb-4">
-                You haven't submitted any forms yet.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/forms')}
-              >
-                Browse Forms
-              </Button>
-            </div>
-          }
-          enableSearch={true}
-          enablePagination={true}
-          enableSorting={true}
-        />
+        {!hasSubmissions ? (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No submissions yet
+            </h3>
+            <p className="text-gray-600 mb-4">
+              You haven't submitted any forms yet.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/forms')}
+            >
+              Browse Forms
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {groupedSubmissions.map((group) => {
+              const columns = buildColumnsForGroup(group.form, group.fieldIds)
+              return (
+                <Card key={group.formId}>
+                  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <CardTitle>{group.title}</CardTitle>
+                      {group.form?.description && (
+                        <p className="text-sm text-gray-600 max-w-2xl">{group.form.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        {group.submissions.length} submission{group.submissions.length !== 1 ? 's' : ''}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportSubmissions(group.submissions, group.title)}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Export
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <DataTable
+                      data={group.submissions}
+                      columns={columns}
+                      searchPlaceholder="Search submissions..."
+                      pageSize={10}
+                      onRowClick={setSelectedSubmission}
+                      showRowActionButton={false}
+                      enableSearch={true}
+                      enablePagination={group.submissions.length > 10}
+                      enableSorting={true}
+                    />
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Submission Details/Edit Modal */}
