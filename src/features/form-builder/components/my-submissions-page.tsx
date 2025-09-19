@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { useForms } from '../hooks/use-forms'
+import { useForm, useForms } from '../hooks/use-forms'
 import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import { AuditService } from '@/features/audit/services/audit.service'
@@ -38,10 +38,18 @@ export default function MySubmissionsPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editFormData, setEditFormData] = useState<Record<string, any>>({})
 
+  const selectedFormId = selectedSubmission?.formId || ''
+  const { data: selectedForm, isLoading: selectedFormLoading } = useForm(selectedFormId)
+
   // Get form details for a submission
-  const getFormForSubmission = (formId: string) => {
+  function getFormForSubmission(formId: string) {
     return forms.find(form => form.id === formId)
   }
+
+  const submissionForm = selectedSubmission
+    ? getFormForSubmission(selectedSubmission.formId) || selectedForm || null
+    : null
+  const isFormLoading = Boolean(selectedSubmission && !submissionForm && selectedFormLoading)
 
   // Handle edit mode
   const handleEditSubmission = (submission: FormSubmission) => {
@@ -284,6 +292,7 @@ export default function MySubmissionsPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleEditSubmission(selectedSubmission)}
+                    disabled={!submissionForm}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
@@ -303,9 +312,27 @@ export default function MySubmissionsPage() {
             </DialogHeader>
 
             <div className="space-y-6 mt-6">
-              {(() => {
-                const form = getFormForSubmission(selectedSubmission.formId)
-                return form?.fields?.map((field) => {
+              {isFormLoading ? (
+                <div className="flex items-center justify-center py-8 text-gray-500">
+                  Loading form details...
+                </div>
+              ) : (() => {
+                if (!submissionForm) {
+                  return (
+                    <div className="space-y-3">
+                      {Object.entries(selectedSubmission.submissionData || {}).map(([fieldId, value]) => (
+                        <div key={fieldId} className="space-y-2">
+                          <div className="font-medium text-gray-900">{fieldId}</div>
+                          <div className="text-gray-900 bg-gray-50 p-3 rounded-md min-h-[2.5rem] flex items-center">
+                            {formatFieldValue(value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+
+                return submissionForm.fields?.map((field) => {
                   const value = isEditMode
                     ? editFormData[field.id]
                     : selectedSubmission.submissionData[field.id]
