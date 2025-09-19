@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { useForm } from '../hooks/use-forms'
 import { useCreateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
-import { ArrowLeft, Send, FileText } from 'lucide-react'
+import { FileUploadService } from '@/services/file-upload.service'
+import { ArrowLeft, Send, FileText, Upload, X } from 'lucide-react'
 import type { FormField } from '@/entities/form/form.types'
 
 export default function FormViewPage() {
@@ -24,6 +25,8 @@ export default function FormViewPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [uploadingFiles, setUploadingFiles] = useState<Record<string, boolean>>({})
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, { fileName: string; fileUrl: string }>>({})
 
   const handleInputChange = (fieldId: string, value: unknown) => {
     setFormData(prev => ({ ...prev, [fieldId]: value }))
@@ -35,6 +38,74 @@ export default function FormViewPage() {
         return newErrors
       })
     }
+  }
+
+  const handleFileUpload = async (fieldId: string, file: File) => {
+    if (!file) return
+
+    try {
+      // Set uploading state
+      setUploadingFiles(prev => ({ ...prev, [fieldId]: true }))
+
+      // Validate file
+      const validation = FileUploadService.validateFile(file)
+      if (!validation.isValid) {
+        setErrors(prev => ({ ...prev, [fieldId]: validation.error! }))
+        return
+      }
+
+      // Upload file
+      const result = await FileUploadService.uploadFile(
+        file,
+        'form-submissions',
+        user?.id
+      )
+
+      // Store file info
+      setUploadedFiles(prev => ({
+        ...prev,
+        [fieldId]: {
+          fileName: result.fileName,
+          fileUrl: result.fileUrl
+        }
+      }))
+
+      // Store file URL in form data
+      setFormData(prev => ({ ...prev, [fieldId]: result.fileUrl }))
+
+      // Clear any previous errors
+      if (errors[fieldId]) {
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[fieldId]
+          return newErrors
+        })
+      }
+    } catch (error) {
+      console.error('File upload failed:', error)
+      setErrors(prev => ({
+        ...prev,
+        [fieldId]: error instanceof Error ? error.message : 'File upload failed'
+      }))
+    } finally {
+      setUploadingFiles(prev => ({ ...prev, [fieldId]: false }))
+    }
+  }
+
+  const handleFileRemove = (fieldId: string) => {
+    // Remove from uploaded files
+    setUploadedFiles(prev => {
+      const newFiles = { ...prev }
+      delete newFiles[fieldId]
+      return newFiles
+    })
+
+    // Remove from form data
+    setFormData(prev => {
+      const newData = { ...prev }
+      delete newData[fieldId]
+      return newData
+    })
   }
 
   const validateField = (field: FormField): string | null => {
@@ -310,6 +381,9 @@ export default function FormViewPage() {
         )
 
       case 'file':
+        const isUploading = uploadingFiles[field.id]
+        const uploadedFile = uploadedFiles[field.id]
+
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -319,12 +393,48 @@ export default function FormViewPage() {
             {field.description && (
               <p className="text-sm text-gray-600">{field.description}</p>
             )}
-            <Input
-              id={field.id}
-              type="file"
-              onChange={(e) => handleInputChange(field.id, e.target.files?.[0]?.name || '')}
-              className={error ? 'border-red-500' : ''}
-            />
+
+            {uploadedFile ? (
+              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-800">{uploadedFile.fileName}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleFileRemove(field.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  id={field.id}
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleFileUpload(field.id, file)
+                    }
+                  }}
+                  disabled={isUploading}
+                  className={error ? 'border-red-500' : ''}
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+                    <div className="flex items-center space-x-2 text-blue-600">
+                      <Upload className="h-4 w-4 animate-pulse" />
+                      <span className="text-sm">Uploading...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
         )

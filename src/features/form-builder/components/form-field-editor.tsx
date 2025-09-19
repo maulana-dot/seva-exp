@@ -140,11 +140,11 @@ export function FormFieldEditor({
       </CardHeader>
 
       {isExpanded && (
-        <CardContent className="pt-0 border-t bg-gray-50">
-          <div className="space-y-4">
+        <CardContent className="pt-4 border-t bg-gray-50">
+          <div className="space-y-6">
             {/* Basic Settings */}
-            <div className="grid grid-cols-1 gap-4">
-              <div>
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-2">
                 <Label htmlFor={`label-${field.id}`}>Field Label</Label>
                 <Input
                   id={`label-${field.id}`}
@@ -154,7 +154,7 @@ export function FormFieldEditor({
                 />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor={`placeholder-${field.id}`}>Placeholder</Label>
                 <Input
                   id={`placeholder-${field.id}`}
@@ -164,7 +164,7 @@ export function FormFieldEditor({
                 />
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor={`description-${field.id}`}>Description</Label>
                 <Textarea
                   id={`description-${field.id}`}
@@ -187,8 +187,8 @@ export function FormFieldEditor({
 
             {/* Options for select, radio, checkbox */}
             {hasOptions && (
-              <div className="space-y-3">
-                <Label>Options</Label>
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Options</Label>
 
                 {field.options?.map((option, index) => (
                   <div key={option.id} className="flex items-center space-x-2">
@@ -234,12 +234,12 @@ export function FormFieldEditor({
 
             {/* Validation Settings */}
             {['text', 'textarea', 'number'].includes(field.type) && (
-              <div className="space-y-3">
-                <Label>Validation</Label>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Validation</Label>
+                <div className="grid grid-cols-2 gap-4">
                   {field.type === 'number' ? (
                     <>
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor={`min-${field.id}`}>Minimum Value</Label>
                         <Input
                           id={`min-${field.id}`}
@@ -253,7 +253,7 @@ export function FormFieldEditor({
                           })}
                         />
                       </div>
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor={`max-${field.id}`}>Maximum Value</Label>
                         <Input
                           id={`max-${field.id}`}
@@ -270,7 +270,7 @@ export function FormFieldEditor({
                     </>
                   ) : (
                     <>
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor={`min-length-${field.id}`}>Min Length</Label>
                         <Input
                           id={`min-length-${field.id}`}
@@ -284,7 +284,7 @@ export function FormFieldEditor({
                           })}
                         />
                       </div>
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor={`max-length-${field.id}`}>Max Length</Label>
                         <Input
                           id={`max-length-${field.id}`}

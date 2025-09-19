@@ -5,13 +5,15 @@ import {
   getDoc,
   updateDoc,
   deleteDoc,
+  addDoc,
   query,
   where,
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { deleteUser as deleteAuthUser } from 'firebase/auth'
-import { db } from '@/libs/firebase'
+import { auth, db } from '@/libs/firebase'
 import { logger } from '@/utils/logger'
 import { AuditService } from '@/features/audit/services/audit.service'
 import type { AuthUser } from '@/entities/auth/auth.types'
@@ -24,6 +26,15 @@ export interface UserManagementUser extends AuthUser {
   assetsCount?: number
 }
 
+export interface CreateUserInput {
+  email: string
+  password: string
+  displayName: string
+  role: UserRole
+  department?: string
+  isActive?: boolean
+}
+
 export interface UpdateUserInput {
   id: UserId
   displayName?: string
@@ -33,6 +44,51 @@ export interface UpdateUserInput {
 }
 
 export class UserManagementService {
+  static async createUser(
+    input: CreateUserInput,
+    createdBy: UserId,
+    createdByEmail: string
+  ): Promise<UserId> {
+    try {
+      logger.info('Creating new user', { email: input.email, createdBy })
+
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, input.email, input.password)
+      const firebaseUser = userCredential.user
+
+      // Create user document in Firestore
+      const userData = {
+        firebaseUid: firebaseUser.uid,
+        email: input.email,
+        displayName: input.displayName,
+        role: input.role,
+        department: input.department || null,
+        isActive: input.isActive ?? true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      const userDocRef = await addDoc(collection(db, USERS_COLLECTION), userData)
+      const userId = userDocRef.id as UserId
+
+      logger.info('User created successfully', { userId, email: input.email })
+
+      // Log audit trail
+      await AuditService.logUserCreated(
+        createdBy,
+        createdByEmail,
+        userId,
+        input.email,
+        input.role
+      )
+
+      return userId
+    } catch (error) {
+      logger.error('Failed to create user', { input: { ...input, password: '[HIDDEN]' }, error })
+      throw error
+    }
+  }
+
   static async getUsers(): Promise<UserManagementUser[]> {
     try {
       logger.info('Fetching all users for management')

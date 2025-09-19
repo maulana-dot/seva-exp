@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { UserManagementService, UpdateUserInput } from '../services/user-management.service'
+import { UserManagementService, UpdateUserInput, CreateUserInput } from '../services/user-management.service'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
 import type { UserId } from '@/entities/user/user.types'
 
@@ -22,6 +22,25 @@ export function useUser(userId: UserId) {
     queryKey: QUERY_KEYS.user(userId),
     queryFn: () => UserManagementService.getUser(userId),
     enabled: !!userId,
+  })
+}
+
+export function useCreateUser() {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: CreateUserInput) => {
+      if (!user) throw new Error('User not authenticated')
+      return UserManagementService.createUser(input, user.id, user.email)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users })
+      toast.success('User created successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create user')
+    },
   })
 }
 

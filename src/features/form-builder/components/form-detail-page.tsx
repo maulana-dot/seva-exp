@@ -218,8 +218,8 @@ export default function FormDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardHeader className="pb-6">
+                <div className="flex items-center justify-between mb-4">
                   <CardTitle className="flex items-center space-x-2">
                     <FileText className="h-5 w-5" />
                     <span>{form.title}</span>
@@ -229,24 +229,24 @@ export default function FormDetailPage() {
                   </Badge>
                 </div>
                 {form.description && (
-                  <p className="text-gray-600 mt-2">{form.description}</p>
+                  <p className="text-gray-600 mt-4">{form.description}</p>
                 )}
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Created</p>
                     <p className="text-sm text-gray-900">{formatDateTime(form.createdAt)}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Last Updated</p>
                     <p className="text-sm text-gray-900">{formatDateTime(form.updatedAt)}</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Fields Count</p>
                     <p className="text-sm text-gray-900">{form.fields?.length || 0} fields</p>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700">Total Submissions</p>
                     <p className="text-sm text-gray-900">{submissions.length}</p>
                   </div>

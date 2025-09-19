@@ -80,7 +80,7 @@ export function useCreateForm() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: CreateFormInput) => FormService.createForm(input, user?.id!),
+    mutationFn: (input: CreateFormInput) => FormService.createForm(input, user?.id!, user?.email!),
     onSuccess: () => {
       toast.success('Form created successfully')
       // Invalidate relevant queries
@@ -100,7 +100,7 @@ export function useUpdateForm() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: UpdateFormInput) => FormService.updateForm(input, user?.id!),
+    mutationFn: (input: UpdateFormInput) => FormService.updateForm(input, user?.id!, user?.email!),
     onSuccess: (_, variables) => {
       toast.success('Form updated successfully')
       // Invalidate relevant queries
@@ -121,7 +121,7 @@ export function useDeleteForm() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (formId: string) => FormService.deleteForm(formId, user?.id!),
+    mutationFn: (formId: string) => FormService.deleteForm(formId, user?.id!, user?.email!),
     onSuccess: () => {
       toast.success('Form deleted successfully')
       // Invalidate relevant queries
@@ -141,7 +141,7 @@ export function useDuplicateForm() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (formId: string) => FormService.duplicateForm(formId, user?.id!),
+    mutationFn: (formId: string) => FormService.duplicateForm(formId, user?.id!, user?.email!),
     onSuccess: () => {
       toast.success('Form duplicated successfully')
       // Invalidate relevant queries
@@ -165,7 +165,7 @@ export function useSubmitForm() {
       formId: string
       data: Record<string, unknown>
       submitterEmail?: string
-    }) => FormService.submitForm(formId, data, user?.id, submitterEmail),
+    }) => FormService.submitForm(formId, data, user?.id, submitterEmail || user?.email),
     onSuccess: (_, variables) => {
       toast.success('Form submitted successfully')
       // Invalidate submissions for this form

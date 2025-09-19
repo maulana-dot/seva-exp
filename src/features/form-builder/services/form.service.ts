@@ -12,6 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/libs/firebase'
+import { AuditService } from '@/features/audit/services/audit.service'
 import type {
   CustomForm,
   CreateFormInput,
@@ -24,7 +25,7 @@ const FORMS_COLLECTION = 'forms'
 const SUBMISSIONS_COLLECTION = 'form_submissions'
 
 export class FormService {
-  static async createForm(input: CreateFormInput, createdBy: UserId): Promise<string> {
+  static async createForm(input: CreateFormInput, createdBy: UserId, userEmail: string): Promise<string> {
     try {
       console.log('Creating new form', { title: input.title, createdBy })
 
@@ -45,6 +46,9 @@ export class FormService {
 
       const docRef = await addDoc(collection(db, FORMS_COLLECTION), formData)
 
+      // Log audit trail
+      await AuditService.logFormCreated(createdBy, userEmail, docRef.id, input.title)
+
       console.log('Form created successfully', { formId: docRef.id, createdBy })
       return docRef.id
     } catch (error) {
@@ -53,7 +57,7 @@ export class FormService {
     }
   }
 
-  static async updateForm(input: UpdateFormInput, userId: UserId): Promise<void> {
+  static async updateForm(input: UpdateFormInput, userId: UserId, userEmail: string): Promise<void> {
     try {
       console.log('Updating form', { formId: input.id, userId })
 
@@ -84,6 +88,9 @@ export class FormService {
 
       await updateDoc(formRef, updateData)
 
+      // Log audit trail
+      await AuditService.logFormUpdated(userId, userEmail, input.id, formData.title, updateData)
+
       console.log('Form updated successfully', { formId: input.id, userId })
     } catch (error) {
       console.error('Failed to update form', { input, userId, error })
@@ -91,7 +98,7 @@ export class FormService {
     }
   }
 
-  static async deleteForm(formId: string, userId: UserId): Promise<void> {
+  static async deleteForm(formId: string, userId: UserId, userEmail: string): Promise<void> {
     try {
       console.log('Deleting form', { formId, userId })
 
@@ -110,6 +117,9 @@ export class FormService {
       }
 
       await deleteDoc(formRef)
+
+      // Log audit trail
+      await AuditService.logFormDeleted(userId, userEmail, formId, formData.title)
 
       console.log('Form deleted successfully', { formId, userId })
     } catch (error) {
@@ -206,6 +216,10 @@ export class FormService {
     try {
       console.log('Submitting form', { formId, submittedBy })
 
+      // Get form title for audit logging
+      const form = await this.getForm(formId)
+      const formTitle = form?.title || 'Unknown Form'
+
       const submissionData = {
         formId,
         submittedBy: submittedBy || null,
@@ -216,6 +230,11 @@ export class FormService {
       }
 
       const docRef = await addDoc(collection(db, SUBMISSIONS_COLLECTION), submissionData)
+
+      // Log audit trail
+      if (submittedBy && submitterEmail) {
+        await AuditService.logFormSubmitted(submittedBy, submitterEmail, formId, formTitle, docRef.id)
+      }
 
       console.log('Form submitted successfully', { formId, submissionId: docRef.id, submittedBy })
       return docRef.id
@@ -255,7 +274,7 @@ export class FormService {
     }
   }
 
-  static async duplicateForm(formId: string, userId: UserId): Promise<string> {
+  static async duplicateForm(formId: string, userId: UserId, userEmail: string): Promise<string> {
     try {
       console.log('Duplicating form', { formId, userId })
 
@@ -281,7 +300,7 @@ export class FormService {
         settings: { ...originalForm.settings }
       }
 
-      const newFormId = await this.createForm(duplicateInput, userId)
+      const newFormId = await this.createForm(duplicateInput, userId, userEmail)
 
       console.log('Form duplicated successfully', { originalFormId: formId, newFormId, userId })
       return newFormId

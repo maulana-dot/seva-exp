@@ -1,11 +1,27 @@
+import { useState } from 'react'
 import { UsersTable } from './users-table'
-import { useUsers } from '../hooks/use-user-management'
+import { CreateUserForm } from './create-user-form'
+import { useUsers, useCreateUser } from '../hooks/use-user-management'
 import { usePermissions } from '@/features/authentication/hooks/use-permissions'
-import { Users, Shield, UserCheck, UserX } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Users, Shield, UserCheck, UserX, UserPlus } from 'lucide-react'
+import type { CreateUserInput } from '../services/user-management.service'
 
 export default function UserManagementPage() {
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+
   const { data: users = [], isLoading } = useUsers()
   const { canManageAllUsers } = usePermissions()
+  const createUserMutation = useCreateUser()
+
+  const handleCreateUser = (data: CreateUserInput) => {
+    createUserMutation.mutate(data, {
+      onSuccess: () => {
+        setShowCreateDialog(false)
+      },
+    })
+  }
 
   if (!canManageAllUsers) {
     return (
@@ -23,9 +39,17 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-gray-600">Manage users, roles, and permissions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-gray-600">Manage users, roles, and permissions</p>
+        </div>
+        {canManageAllUsers && (
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Create New User
+          </Button>
+        )}
       </div>
 
       {/* Statistics */}
@@ -83,6 +107,20 @@ export default function UserManagementPage() {
           <UsersTable users={users} isLoading={isLoading} />
         </div>
       </div>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+          </DialogHeader>
+          <CreateUserForm
+            onSubmit={handleCreateUser}
+            isSubmitting={createUserMutation.isPending}
+            onCancel={() => setShowCreateDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
