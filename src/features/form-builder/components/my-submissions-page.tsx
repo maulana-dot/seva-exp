@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useForms } from '../hooks/use-forms'
 import { useFormSubmissionsByUser, useUpdateFormSubmission } from '../hooks/use-form-submissions'
 import { useAuth } from '@/features/authentication/hooks/use-auth'
-import { useAudit } from '@/features/audit/hooks/use-audit'
+import { AuditService } from '@/features/audit/services/audit.service'
 import {
   ArrowLeft,
   FileText,
@@ -29,7 +29,6 @@ import type { FormSubmission } from '@/entities/form-submission/form-submission.
 export default function MySubmissionsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { logActivity } = useAudit()
 
   const { data: forms = [], isLoading: formsLoading } = useForms()
   const { data: submissions = [], isLoading: submissionsLoading } = useFormSubmissionsByUser(user?.firebaseUid || '')
@@ -61,16 +60,15 @@ export default function MySubmissionsPage() {
       })
 
       // Log the edit action for audit
-      await logActivity({
-        action: 'submission_edited',
-        category: 'form_management',
-        details: {
-          submissionId: selectedSubmission.id,
-          formId: selectedSubmission.formId,
-          formTitle: selectedSubmission.formTitle,
-        },
-        severity: 'medium',
-      })
+      if (user) {
+        await AuditService.logFormUpdated(
+          user.id,
+          user.email,
+          selectedSubmission.formId,
+          selectedSubmission.formTitle,
+          { submissionId: selectedSubmission.id, action: 'submission_edited' }
+        )
+      }
 
       setIsEditMode(false)
       setSelectedSubmission(null)
