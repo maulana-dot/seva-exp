@@ -187,7 +187,7 @@ export async function encryptedFetch<TResponse = unknown, TRequest = unknown>(
     // Encrypt request body if present
     if (body) {
       const encryptedPayload = await encryptRequestPayload(body)
-      fetchOptions.body = JSON.stringify(encryptedPayload)
+      ;(fetchOptions as RequestInit).body = JSON.stringify(encryptedPayload)
       fetchOptions.headers = {
         'Content-Type': 'application/json',
         'X-Encrypted': 'true',
