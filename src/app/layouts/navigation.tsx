@@ -51,6 +51,18 @@ export function Navigation() {
                 <span>Forms</span>
               </Link>
 
+              <Link
+                to="/my-submissions"
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive('/my-submissions')
+                    ? 'text-blue-600 bg-blue-50 border border-blue-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                <List className="h-4 w-4" />
+                <span>My Submissions</span>
+              </Link>
+
               {canManageUsers && (
                 <Link
                   to="/users"
@@ -118,13 +130,6 @@ export function Navigation() {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownItem>
-
-                <Link to="/my-submissions">
-                  <DropdownItem>
-                    <List className="mr-2 h-4 w-4" />
-                    My Submissions
-                  </DropdownItem>
-                </Link>
 
                 <DropdownSeparator />
 
